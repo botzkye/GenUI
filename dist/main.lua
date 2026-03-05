@@ -2476,6 +2476,7 @@ function Group.new(parent, theme, options)
     self._theme    = theme
     self._elements = {}
 
+    -- Wrapper fills full width, auto height
     self._frame = Util.create("Frame", {
         Name             = "Group",
         Size             = UDim2.new(1, 0, 0, 36),
@@ -2483,13 +2484,21 @@ function Group.new(parent, theme, options)
         BackgroundTransparency = 1,
     }, parent)
 
-    Util.listLayout(self._frame, {
+    -- UIListLayout horizontal
+    local layout = Util.listLayout(self._frame, {
         FillDirection       = Enum.FillDirection.Horizontal,
-        VerticalAlignment   = Enum.VerticalAlignment.Center,
+        VerticalAlignment   = Enum.VerticalAlignment.Top,
         HorizontalAlignment = Enum.HorizontalAlignment.Left,
         Padding             = UDim.new(0, options.Gap or 6),
     })
 
+    -- UIFlexItem so children share space equally
+    local flex = Instance.new("UIFlexItem")
+    flex.FlexMode = Enum.UIFlexMode.Fill
+    -- Note: UIFlexItem goes on children, not the layout
+    -- We'll handle sizing per-element via _isGroup flag
+
+    self._gap = options.Gap or 6
     return self
 end
 
@@ -2504,18 +2513,41 @@ function Group:space()
 end
 Group.Space = Group.space
 
--- Forward element methods (parent = self._frame which is a real Instance)
+-- Forward element methods - wrap each in a flex cell
 local elementNames = { "button","toggle","slider","input","dropdown","colorpicker","keybind","label","divider" }
 for _, name in ipairs(elementNames) do
     Group[name] = function(self, options)
         local Tab = _G.__GenUI_modules and _G.__GenUI_modules["Core.Tab"]
                  or _G.__GenUI_modules["Core.Tab"]
+
+        -- Each child gets a flex cell that grows to fill available space
+        local cell = Util.create("Frame", {
+            Size             = UDim2.new(0, 100, 0, 36),  -- base size, flex will override
+            AutomaticSize    = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+        }, self._frame)
+
+        -- UIFlexItem makes the cell grow/shrink to fill the group
+        local flexItem = Instance.new("UIFlexItem")
+        flexItem.FlexMode       = Enum.UIFlexMode.Fill
+        flexItem.GrowRatio      = 1
+        flexItem.ShrinkRatio    = 1
+        flexItem.Parent         = cell
+
         local proxy = {}
-        proxy._frame    = self._frame   -- real GuiObject Instance
+        proxy._frame    = cell
         proxy._theme    = self._theme
         proxy._elements = self._elements
         setmetatable(proxy, { __index = Tab })
-        return Tab[name](proxy, options)
+        local el = Tab[name](proxy, options)
+
+        -- Make inner element fill its cell
+        if el and el._root then
+            el._root.Size = UDim2.new(1, 0, 0, el._root.Size.Y.Offset)
+        end
+
+        table.insert(self._elements, el)
+        return el
     end
     Group[name:sub(1,1):upper() .. name:sub(2)] = Group[name]
 end
@@ -2567,7 +2599,7 @@ function Section.new(parent, theme, options)
             TextSize         = 10,
             Font             = Enum.Font.GothamBold,
             TextXAlignment   = Enum.TextXAlignment.Left,
-            LetterSpacing    = 2,
+
         }, header)
 
         -- Collapse button
@@ -3082,11 +3114,12 @@ end
 
 function Window:_buildContent()
     self._content = Util.create("Frame", {
-        Name            = "ContentPanel",
-        Position        = UDim2.new(0, SIDEBAR_W, 0, TOPBAR_H),
-        Size            = UDim2.new(1, -SIDEBAR_W, 1, -TOPBAR_H),
+        Name             = "ContentPanel",
+        Position         = UDim2.new(0, SIDEBAR_W, 0, TOPBAR_H),
+        Size             = UDim2.new(1, -SIDEBAR_W, 1, -TOPBAR_H),
         BackgroundColor3 = self._theme:get("Background"),
-        BorderSizePixel = 0,
+        BorderSizePixel  = 0,
+        ClipsDescendants = true,
     }, self._clip)
     self._theme:tag(self._content, "BackgroundColor3", "Background")
 end
@@ -3249,29 +3282,34 @@ end
 Window.Tab = Window.tab
 
 -- Create a Section (tab group label) on the sidebar
--- Returns a proxy that creates tabs registered to THIS window
 function Window:section(options)
     options = options or {}
 
-    -- Add a label to the sidebar tab list
     if options.Title and options.Title ~= "" then
-        local label = Util.create("TextLabel", {
+        -- Top spacing before section label (except first)
+        if #self._tabs > 0 then
+            Util.create("Frame", {
+                Size             = UDim2.new(1, 0, 0, 6),
+                BackgroundTransparency = 1,
+            }, self._tabList)
+        end
+
+        -- Section label
+        Util.create("TextLabel", {
             Name             = "SectionLabel_" .. options.Title,
-            Size             = UDim2.new(1, 0, 0, 22),
+            Size             = UDim2.new(1, 0, 0, 20),
             BackgroundTransparency = 1,
             Text             = options.Title:upper(),
             TextColor3       = self._theme:get("TextMuted"),
-            TextSize         = 10,
+            TextSize         = 9,
             Font             = Enum.Font.GothamBold,
             TextXAlignment   = Enum.TextXAlignment.Left,
         }, self._tabList)
-        Util.padding(label, 0, 0, 0, 4)
     end
 
-    -- Return a proxy that forwards :Tab() back to Window
+    -- Return a proxy that forwards :Tab() back to this Window
     local window = self
-    local proxy = {}
-    setmetatable(proxy, {
+    local proxy = setmetatable({}, {
         __index = function(_, key)
             if key == "Tab" or key == "tab" then
                 return function(_, tabOptions)
