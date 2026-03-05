@@ -1810,28 +1810,32 @@ end)()
 
 -- ── Elements.Dropdown ──────────────────────────────
 _m["Elements.Dropdown"] = (function()
-local Util  = _G.__GenUI_modules["Util.Util"]
-local Tween = _G.__GenUI_modules["Util.Tween"]
-local Icons = _G.__GenUI_modules["Systems.Icons"]
+local Util   = _G.__GenUI_modules["Util.Util"]
+local Tween  = _G.__GenUI_modules["Util.Tween"]
+local Icons  = _G.__GenUI_modules["Systems.Icons"]
+local UIS    = game:GetService("UserInputService")
 
 local Dropdown = {}
 Dropdown.__index = Dropdown
+
+local ITEM_H   = 32
+local MAX_ROWS = 6
 
 function Dropdown.new(parent, theme, options)
     local self = setmetatable({}, Dropdown)
     options = options or {}
 
-    self._theme    = theme
-    self._callback = options.Callback or function() end
-    self._multi    = options.Multi    or false
+    self._theme     = theme
+    self._callback  = options.Callback  or function() end
+    self._multi     = options.Multi     or false
     self._allowNone = options.AllowNone or false
-    self._locked   = options.Locked   or false
-    self._values   = options.Values   or {}
-    self._selected = {}
-    self._open     = false
-    self._advanced = type(self._values[1]) == "table"
+    self._locked    = options.Locked    or false
+    self._values    = options.Values    or {}
+    self._selected  = {}
+    self._open      = false
+    self._clickConn = nil
 
-    -- Pre-select
+    -- Pre-select default value
     if options.Value then
         if type(options.Value) == "table" then
             for _, v in ipairs(options.Value) do
@@ -1841,17 +1845,19 @@ function Dropdown.new(parent, theme, options)
             self._selected[tostring(options.Value)] = true
         end
     elseif not self._allowNone and not self._multi and #self._values > 0 then
-        local first = self._advanced and self._values[1].Title or tostring(self._values[1])
+        local first = type(self._values[1]) == "table"
+            and self._values[1].Title
+            or  tostring(self._values[1])
         self._selected[first] = true
     end
 
-    -- Root
+    -- ── Root ──────────────────────────────────────────────────────────────────
+    local hasTitle = options.Title ~= nil
     self._root = Util.create("Frame", {
         Name             = "Dropdown",
-        Size             = UDim2.new(1, 0, 0, options.Title and 58 or 36),
+        Size             = UDim2.new(1, 0, 0, hasTitle and 60 or 36),
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
-        ClipsDescendants = false,
         ZIndex           = 1,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
@@ -1860,7 +1866,7 @@ function Dropdown.new(parent, theme, options)
     Util.listLayout(self._root, { Padding = UDim.new(0, 5) })
 
     -- Title
-    if options.Title then
+    if hasTitle then
         Util.create("TextLabel", {
             Size             = UDim2.new(1, 0, 0, 16),
             BackgroundTransparency = 1,
@@ -1872,13 +1878,13 @@ function Dropdown.new(parent, theme, options)
         }, self._root)
     end
 
-    -- Selector button
+    -- ── Selector row ──────────────────────────────────────────────────────────
     local selector = Util.create("Frame", {
         Size             = UDim2.new(1, 0, 0, 28),
         BackgroundColor3 = theme:get("Background"),
         BorderSizePixel  = 0,
     }, self._root)
-    Util.corner(selector, UDim.new(0, 4))
+    Util.corner(selector, UDim.new(0, 5))
     Util.stroke(selector, theme:get("Border"), 1)
     Util.padding(selector, 0, 8, 0, 8)
 
@@ -1893,7 +1899,7 @@ function Dropdown.new(parent, theme, options)
     })
 
     self._displayLabel = Util.create("TextLabel", {
-        Size             = UDim2.new(1, -20, 1, 0),
+        Size             = UDim2.new(1, -18, 1, 0),
         BackgroundTransparency = 1,
         Text             = self:_getDisplayText(),
         TextColor3       = theme:get("TextSecondary"),
@@ -1903,8 +1909,7 @@ function Dropdown.new(parent, theme, options)
         TextTruncate     = Enum.TextTruncate.AtEnd,
     }, selRow)
 
-    -- Chevron
-    Util.create("TextLabel", {
+    self._chevron = Util.create("TextLabel", {
         Size             = UDim2.new(0, 16, 1, 0),
         BackgroundTransparency = 1,
         Text             = "▾",
@@ -1914,85 +1919,117 @@ function Dropdown.new(parent, theme, options)
         LayoutOrder      = 99,
     }, selRow)
 
-    -- Clickable
-    local btn = Util.create("TextButton", {
+    -- Invisible button over the whole root (not just selector)
+    -- so clicking anywhere on the element opens it
+    local openBtn = Util.create("TextButton", {
         Size             = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         Text             = "",
-        ZIndex           = 2,
-    }, selector)
-    btn.MouseButton1Click:Connect(function()
+        ZIndex           = 4,
+    }, self._root)
+
+    openBtn.MouseButton1Click:Connect(function()
         if self._locked then return end
-        if self._open then self:_closeDropdown() else self:_openDropdown() end
+        if self._open then
+            self:_close()
+        else
+            self:_open_()
+        end
     end)
 
     self._selector = selector
-    self._root.ZIndex = 2
-
     return self
 end
+
+-- ── Helpers ───────────────────────────────────────────────────────────────────
 
 function Dropdown:_getDisplayText()
     local keys = {}
     for k in pairs(self._selected) do table.insert(keys, k) end
     if #keys == 0 then return "Select..." end
+    table.sort(keys)
     if #keys == 1 then return keys[1] end
-    return keys[1] .. " +" .. (#keys - 1)
+    return keys[1] .. "  +" .. (#keys - 1)
 end
 
-function Dropdown:_openDropdown()
+-- ── Open ──────────────────────────────────────────────────────────────────────
+
+function Dropdown:_open_()
+    if self._open then return end
     self._open = true
 
-    -- Popup frame
+    -- Elevate root so popup shows above siblings
+    self._root.ZIndex = 50
+
+    -- Count real items for height
+    local itemCount = 0
+    for _, v in ipairs(self._values) do
+        if not (type(v) == "table" and v.Type == "Divider") then
+            itemCount += 1
+        else
+            itemCount += 0.4 -- divider counts as less
+        end
+    end
+    local targetH = math.min(math.ceil(itemCount) * ITEM_H + 8, MAX_ROWS * ITEM_H + 8)
+
+    -- Popup
     local popup = Util.create("Frame", {
-        Name             = "DropdownPopup",
+        Name             = "Popup",
         Size             = UDim2.new(1, 0, 0, 0),
         Position         = UDim2.new(0, 0, 1, 4),
         BackgroundColor3 = self._theme:get("Elevated"),
         BorderSizePixel  = 0,
-        ClipsDescendants = true,
-        ZIndex           = 10,
+        ClipsDescendants = false,
+        ZIndex           = 50,
     }, self._root)
     Util.corner(popup, UDim.new(0, 6))
-    Util.stroke(popup, self._theme:get("Border"), 1)
+    Util.stroke(popup, self._theme:get("BorderFocus"), 1)
 
-    local list = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0, 0),
-        AutomaticSize    = Enum.AutomaticSize.Y,
+    -- Scrolling list inside popup
+    local scroll = Util.create("ScrollingFrame", {
+        Size               = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
-        ZIndex           = 10,
+        BorderSizePixel    = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = self._theme:get("ScrollBar"),
+        CanvasSize         = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ZIndex             = 51,
     }, popup)
-    Util.padding(list, 4, 4, 4, 4)
-    Util.listLayout(list, { Padding = UDim.new(0, 2) })
+    Util.padding(scroll, 4, 4, 4, 4)
+    Util.listLayout(scroll, { Padding = UDim.new(0, 2) })
 
+    -- Build items
     for _, item in ipairs(self._values) do
         if type(item) == "table" and item.Type == "Divider" then
-            -- Divider
-            local div = Util.create("Frame", {
-                Size             = UDim2.new(1, -8, 0, 1),
+            Util.create("Frame", {
+                Size             = UDim2.new(1, 0, 0, 1),
                 BackgroundColor3 = self._theme:get("Border"),
                 BorderSizePixel  = 0,
-            }, list)
+                ZIndex           = 52,
+            }, scroll)
         else
-            local key = type(item) == "table" and item.Title or tostring(item)
+            local key       = type(item) == "table" and item.Title or tostring(item)
             local isSelected = self._selected[key] == true
 
-            local row = Util.create("TextButton", {
-                Size             = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = isSelected and self._theme:get("AccentDim") or self._theme:get("Elevated"),
-                Text             = "",
-                AutoButtonColor  = false,
-                ZIndex           = 11,
-            }, list)
+            local row = Util.create("Frame", {
+                Size             = UDim2.new(1, 0, 0, ITEM_H),
+                BackgroundColor3 = isSelected
+                    and self._theme:get("AccentDim")
+                    or  self._theme:get("Elevated"),
+                BorderSizePixel  = 0,
+                ZIndex           = 52,
+            }, scroll)
             Util.corner(row, UDim.new(0, 4))
             Util.padding(row, 0, 8, 0, 8)
 
-            local rowInner = Util.create("Frame", {
+            -- Inner row
+            local inner = Util.create("Frame", {
                 Size             = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
-                ZIndex           = 11,
+                ZIndex           = 53,
             }, row)
-            Util.listLayout(rowInner, {
+            Util.listLayout(inner, {
                 FillDirection     = Enum.FillDirection.Horizontal,
                 VerticalAlignment = Enum.VerticalAlignment.Center,
                 Padding           = UDim.new(0, 6),
@@ -2003,80 +2040,93 @@ function Dropdown:_openDropdown()
                 local img = Util.create("ImageLabel", {
                     Size             = UDim2.new(0, 14, 0, 14),
                     BackgroundTransparency = 1,
-                    ZIndex           = 12,
-                }, rowInner)
+                    ZIndex           = 54,
+                }, inner)
                 Icons.apply(img, item.Icon, self._theme:get("TextSecondary"))
             end
 
+            -- Label
             Util.create("TextLabel", {
-                Size             = UDim2.new(1, 0, 0, 16),
+                Size             = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
                 Text             = key,
-                TextColor3       = isSelected and self._theme:get("Accent") or self._theme:get("TextPrimary"),
+                TextColor3       = isSelected
+                    and self._theme:get("Accent")
+                    or  self._theme:get("TextPrimary"),
                 TextSize         = 12,
                 Font             = isSelected and Enum.Font.GothamBold or Enum.Font.Gotham,
                 TextXAlignment   = Enum.TextXAlignment.Left,
-                ZIndex           = 12,
-            }, rowInner)
+                ZIndex           = 54,
+            }, inner)
 
-            row.MouseEnter:Connect(function()
-                if not (self._selected[key]) then
-                    Tween.color(row, "BackgroundColor3", self._theme:get("SurfaceHover"), 0.1)
+            -- Clickable button over row
+            local rowBtn = Util.create("TextButton", {
+                Size             = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text             = "",
+                ZIndex           = 55,
+            }, row)
+
+            rowBtn.MouseEnter:Connect(function()
+                if not self._selected[key] then
+                    Tween.color(row, "BackgroundColor3", self._theme:get("SurfaceHover"), 0.08)
                 end
             end)
-            row.MouseLeave:Connect(function()
-                if not (self._selected[key]) then
-                    Tween.color(row, "BackgroundColor3", self._theme:get("Elevated"), 0.1)
+            rowBtn.MouseLeave:Connect(function()
+                if not self._selected[key] then
+                    Tween.color(row, "BackgroundColor3", self._theme:get("Elevated"), 0.08)
                 end
             end)
-            row.MouseButton1Click:Connect(function()
+
+            rowBtn.MouseButton1Click:Connect(function()
+                -- Advanced item with own callback
                 if type(item) == "table" and item.Callback then
                     item.Callback()
-                    self:_closeDropdown()
+                    self:_close()
                     return
                 end
 
                 if self._multi then
-                    if self._selected[key] then
-                        self._selected[key] = nil
-                    else
-                        self._selected[key] = true
-                    end
+                    self._selected[key] = not self._selected[key] or nil
                 else
                     self._selected = { [key] = true }
-                    self:_closeDropdown()
                 end
 
                 self._displayLabel.Text = self:_getDisplayText()
 
-                -- Fire callback
                 if self._multi then
                     local sel = {}
                     for k in pairs(self._selected) do table.insert(sel, k) end
                     self._callback(sel)
                 else
                     self._callback(key)
+                    self:_close()
                 end
             end)
         end
     end
 
     -- Animate open
-    local targetH = math.min(#self._values * 34 + 8, 200)
-    popup.Size = UDim2.new(1, 0, 0, 0)
-    Tween.to(popup, { Size = UDim2.new(1, 0, 0, targetH) }, 0.15)
-
+    Tween.to(popup, { Size = UDim2.new(1, 0, 0, targetH) }, 0.15, Enum.EasingStyle.Quart)
     self._popup = popup
 
-    -- Click-away to close
-    task.spawn(function()
-        local conn
-        conn = game:GetService("UserInputService").InputBegan:Connect(function(input)
+    -- Click-away: delay one frame so the current click doesn't immediately close it
+    task.delay(0.05, function()
+        if not self._open then return end
+        self._clickConn = UIS.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                -- Check if click is outside popup
                 task.defer(function()
-                    if self._open then
-                        self:_closeDropdown()
-                        conn:Disconnect()
+                    if self._open and self._popup then
+                        local mp   = UIS:GetMouseLocation()
+                        local pos  = self._popup.AbsolutePosition
+                        local size = self._popup.AbsoluteSize
+                        local inside = mp.X >= pos.X and mp.X <= pos.X + size.X
+                                   and mp.Y >= pos.Y and mp.Y <= pos.Y + size.Y
+                        if not inside then
+                            self:_close()
+                        end
                     end
                 end)
             end
@@ -2084,18 +2134,29 @@ function Dropdown:_openDropdown()
     end)
 end
 
-function Dropdown:_closeDropdown()
+-- ── Close ─────────────────────────────────────────────────────────────────────
+
+function Dropdown:_close()
+    if not self._open then return end
     self._open = false
+    self._root.ZIndex = 1
+
+    if self._clickConn then
+        self._clickConn:Disconnect()
+        self._clickConn = nil
+    end
+
     if self._popup then
-        Tween.to(self._popup, { Size = UDim2.new(1, 0, 0, 0) }, 0.12)
+        local p = self._popup
+        self._popup = nil
+        Tween.to(p, { Size = UDim2.new(1, 0, 0, 0) }, 0.12, Enum.EasingStyle.Quart)
         task.delay(0.13, function()
-            if self._popup then
-                self._popup:Destroy()
-                self._popup = nil
-            end
+            if p and p.Parent then p:Destroy() end
         end)
     end
 end
+
+-- ── Public API ────────────────────────────────────────────────────────────────
 
 function Dropdown:set(value)
     self._selected = {}
@@ -2117,8 +2178,7 @@ Dropdown.Get = Dropdown.get
 
 function Dropdown:refresh(newValues)
     self._values   = newValues
-    self._advanced = type(newValues[1]) == "table"
-    if self._open then self:_closeDropdown() end
+    if self._open then self:_close() end
 end
 Dropdown.Refresh = Dropdown.refresh
 
@@ -2910,27 +2970,27 @@ function Window:_build(options)
     Util.stroke(self._root, self._theme:get("Border"), 1)
     self._theme:tag(self._root, "BackgroundColor3", "Background")
 
-    -- Drop shadow (UIGradient trick via extra frame)
+    -- Drop shadow
     local shadow = Util.create("Frame", {
         Name            = "Shadow",
         AnchorPoint     = Vector2.new(0.5, 0.5),
-        Position        = UDim2.new(0.5, 0, 0.5, 4),
-        Size            = UDim2.new(1, 12, 1, 12),
+        Position        = UDim2.new(0.5, 0, 0.5, 6),
+        Size            = UDim2.new(1, 16, 1, 16),
         BackgroundColor3 = Color3.new(0, 0, 0),
-        BackgroundTransparency = 0.7,
+        BackgroundTransparency = 0.6,
         ZIndex          = self._root.ZIndex - 1,
         BorderSizePixel = 0,
     }, self._gui)
-    Util.corner(shadow, UDim.new(0, 14))
+    Util.corner(shadow, UDim.new(0, 16))
 
-    -- Clip inner contents
+    -- Clip inner contents — same corner radius as root
     local clip = Util.create("Frame", {
         Name             = "ClipFrame",
         Size             = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         ClipsDescendants = true,
     }, self._root)
-    Util.corner(clip, UDim.new(0, 10))
+    -- No corner on clip — the root already handles corner; clip just clips overflow
 
     self._clip = clip
 
@@ -2948,8 +3008,16 @@ function Window:_buildTopbar(options)
         BorderSizePixel = 0,
         ZIndex          = 3,
     }, self._clip)
-    Util.stroke(bar, self._theme:get("TopbarBorder"), 1)
     self._theme:tag(bar, "BackgroundColor3", "TopbarBg")
+
+    -- Bottom border line (instead of UIStroke which causes gaps)
+    Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0, 1),
+        Position         = UDim2.new(0, 0, 1, -1),
+        BackgroundColor3 = self._theme:get("Border"),
+        BorderSizePixel  = 0,
+        ZIndex           = 4,
+    }, bar)
 
     Util.padding(bar, 0, 12, 0, 14)
 
@@ -3048,12 +3116,14 @@ function Window:_buildSidebar(options)
     }, self._clip)
     self._theme:tag(sidebar, "BackgroundColor3", "SidebarBg")
 
-    -- Right border
+    -- Right border line
     Util.create("Frame", {
+        Name             = "RightBorder",
         Size             = UDim2.new(0, 1, 1, 0),
         Position         = UDim2.new(1, -1, 0, 0),
-        BackgroundColor3 = self._theme:get("SidebarBorder"),
+        BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
+        ZIndex           = 2,
     }, sidebar)
 
     -- Search bar
@@ -3122,6 +3192,9 @@ function Window:_buildContent()
         ClipsDescendants = true,
     }, self._clip)
     self._theme:tag(self._content, "BackgroundColor3", "Background")
+
+    -- Make sure tab scroll frames match the content size exactly
+    -- by using Size = UDim2.new(1,0,1,0) on each tab frame (already done in Tab.new)
 end
 
 -- ── Dragging ──────────────────────────────────────────────────────────────────
