@@ -2956,7 +2956,8 @@ function Window:_build(options)
     self._fullSize  = size
     self._minimized = false
 
-    -- Root — no ClipsDescendants so UICorner is preserved
+    -- Root frame
+    -- In modern Roblox (2023+), ClipsDescendants + UICorner works correctly
     self._root = Util.create("Frame", {
         Name             = "WindowFrame",
         AnchorPoint      = Vector2.new(0.5, 0.5),
@@ -2964,11 +2965,25 @@ function Window:_build(options)
         Size             = size,
         BackgroundColor3 = self._theme:get("Background"),
         BorderSizePixel  = 0,
-        ClipsDescendants = false,
+        ClipsDescendants = true,
     }, self._gui)
     Util.corner(self._root, UDim.new(0, 10))
-    Util.stroke(self._root, self._theme:get("Border"), 1)
+
+    -- UIStroke as separate sibling (not child) so it's not clipped
+    local strokeFrame = Util.create("Frame", {
+        Name             = "WindowStroke",
+        AnchorPoint      = Vector2.new(0.5, 0.5),
+        Position         = UDim2.new(0.5, 0, 0.5, 0),
+        Size             = size,
+        BackgroundTransparency = 1,
+        BorderSizePixel  = 0,
+        ZIndex           = self._root.ZIndex + 10,
+    }, self._gui)
+    Util.corner(strokeFrame, UDim.new(0, 10))
+    Util.stroke(strokeFrame, self._theme:get("Border"), 1)
+
     self._theme:tag(self._root, "BackgroundColor3", "Background")
+    self._strokeFrame = strokeFrame
 
     self._clip = self._root
 
@@ -2986,18 +3001,8 @@ function Window:_buildTopbar(options)
         BorderSizePixel = 0,
         ZIndex          = 3,
     }, self._clip)
-    Util.corner(bar, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(bar, "BackgroundColor3", "TopbarBg")
-
-    -- Cover bottom-left & bottom-right corners (make them square)
-    local fix = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0.5, 0),
-        Position         = UDim2.new(0, 0, 0.5, 0),
-        BackgroundColor3 = self._theme:get("TopbarBg"),
-        BorderSizePixel  = 0,
-        ZIndex           = 4,
-    }, bar)
-    self._theme:tag(fix, "BackgroundColor3", "TopbarBg")
+    -- No UICorner here — root's UICorner handles top corners
 
     -- Bottom border line
     Util.create("Frame", {
@@ -3005,7 +3010,7 @@ function Window:_buildTopbar(options)
         Position         = UDim2.new(0, 0, 1, -1),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 5,
+        ZIndex           = 4,
     }, bar)
 
     Util.padding(bar, 0, 14, 0, 14)
@@ -3109,38 +3114,17 @@ function Window:_buildSidebar(options)
         BackgroundColor3 = self._theme:get("SidebarBg"),
         BorderSizePixel = 0,
     }, self._clip)
-    Util.corner(sidebar, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(sidebar, "BackgroundColor3", "SidebarBg")
+    -- No UICorner — root handles bottom-left corner visually
 
-    -- Cover top corners & right side (make them square)
-    -- Top fix (covers top-left & top-right rounded corners)
-    local topFix = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0.5, 0),
-        Position         = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = self._theme:get("SidebarBg"),
-        BorderSizePixel  = 0,
-        ZIndex           = 2,
-    }, sidebar)
-    self._theme:tag(topFix, "BackgroundColor3", "SidebarBg")
-
-    -- Right fix (covers right side rounded corners → makes right edge square)
-    local rightFix = Util.create("Frame", {
-        Size             = UDim2.new(0.5, 0, 1, 0),
-        Position         = UDim2.new(0.5, 0, 0, 0),
-        BackgroundColor3 = self._theme:get("SidebarBg"),
-        BorderSizePixel  = 0,
-        ZIndex           = 2,
-    }, sidebar)
-    self._theme:tag(rightFix, "BackgroundColor3", "SidebarBg")
-
-    -- Right border line (on top of fixes)
+    -- Right border line
     Util.create("Frame", {
         Name             = "RightBorder",
         Size             = UDim2.new(0, 1, 1, 0),
         Position         = UDim2.new(1, -1, 0, 0),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 3,
+        ZIndex           = 2,
     }, sidebar)
 
     -- Search bar
@@ -3208,29 +3192,9 @@ function Window:_buildContent()
         BorderSizePixel  = 0,
         ClipsDescendants = true,
     }, self._clip)
-    Util.corner(self._content, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(self._content, "BackgroundColor3", "Background")
-
-    -- Cover top & left corners (make square), keep only bottom-right rounded
-    local topFix = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0.5, 0),
-        Position         = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = self._theme:get("Background"),
-        BorderSizePixel  = 0,
-        ZIndex           = 2,
-        ClipsDescendants = false,
-    }, self._content)
-    self._theme:tag(topFix, "BackgroundColor3", "Background")
-
-    local leftFix = Util.create("Frame", {
-        Size             = UDim2.new(0.5, 0, 1, 0),
-        Position         = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = self._theme:get("Background"),
-        BorderSizePixel  = 0,
-        ZIndex           = 2,
-        ClipsDescendants = false,
-    }, self._content)
-    self._theme:tag(leftFix, "BackgroundColor3", "Background")
+    -- No UICorner on content — ClipsDescendants already clips it rectangular
+    -- The root frame's UICorner handles the visual rounding of bottom-right corner
 end
 
 -- ── Dragging ──────────────────────────────────────────────────────────────────
@@ -3432,36 +3396,36 @@ function Window:section(options)
 end
 Window.Section = Window.section
 
--- Toggle window visibility (hide/show)
 function Window:toggle()
     self._visible = not self._visible
     if self._visible then
         self._root.Visible = true
-        self._minimized = false
+        if self._strokeFrame then self._strokeFrame.Visible = true end
         Tween.to(self._root, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
+        if self._strokeFrame then
+            Tween.to(self._strokeFrame, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
+        end
+        self._minimized = false
     else
         Tween.to(self._root, { Size = UDim2.fromOffset(self._fullSize.X.Offset, 0) }, 0.18)
         task.delay(0.2, function()
             if not self._visible then
                 self._root.Visible = false
+                if self._strokeFrame then self._strokeFrame.Visible = false end
             end
         end)
     end
 end
 
--- Minimize — collapse to just the topbar
 function Window:_minimize()
     self._minimized = not self._minimized
-    if self._minimized then
-        -- Collapse: keep width, height = topbar only
-        Tween.to(self._root, {
-            Size = UDim2.fromOffset(self._fullSize.X.Offset, TOPBAR_H)
-        }, 0.2, Enum.EasingStyle.Quart)
-    else
-        -- Restore full size
-        Tween.to(self._root, {
-            Size = self._fullSize
-        }, 0.22, Enum.EasingStyle.Back)
+    local targetSize = self._minimized
+        and UDim2.fromOffset(self._fullSize.X.Offset, TOPBAR_H)
+        or  self._fullSize
+    local style = self._minimized and Enum.EasingStyle.Quart or Enum.EasingStyle.Back
+    Tween.to(self._root, { Size = targetSize }, 0.2, style)
+    if self._strokeFrame then
+        Tween.to(self._strokeFrame, { Size = targetSize }, 0.2, style)
     end
 end
 
@@ -3494,6 +3458,7 @@ function Window:destroy()
         conn:Disconnect()
     end
     if self._root then self._root:Destroy() end
+    if self._strokeFrame then self._strokeFrame:Destroy() end
 end
 Window.Destroy = Window.destroy
 
