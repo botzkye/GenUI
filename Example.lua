@@ -18,7 +18,7 @@ do
         if game:GetService("RunService"):IsStudio() then
             GenUI = require(game:GetService("ReplicatedStorage"):WaitForChild("GenUI"):WaitForChild("Init"))
         else
-            GenUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/GenUI/main/dist/main.lua"))()
+            GenUI = loadstring(game:HttpGet("https://github.com/botzkye/GenUI/blob/main/dist/main.lua"))()
         end
     end
 end
