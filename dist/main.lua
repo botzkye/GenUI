@@ -2975,46 +2975,6 @@ function Window:_build(options)
     self:_buildTopbar(options)
     self:_buildSidebar(options)
     self:_buildContent()
-
-    -- Corner punch-out masks — cover leaked pixels at each corner
-    -- Each mask matches the color of whatever frame sits behind that corner
-    local R = 10
-
-    -- Top-left & Top-right → Topbar color
-    for _, side in ipairs({ {0, 0}, {1, 0} }) do
-        local m = Util.create("Frame", {
-            AnchorPoint      = Vector2.new(side[1], side[2]),
-            Position         = UDim2.new(side[1], 0, side[2], 0),
-            Size             = UDim2.fromOffset(R, R),
-            BackgroundColor3 = self._theme:get("TopbarBg"),
-            BorderSizePixel  = 0,
-            ZIndex           = 20,
-        }, self._root)
-        self._theme:tag(m, "BackgroundColor3", "TopbarBg")
-    end
-
-    -- Bottom-left → Sidebar color
-    local bl = Util.create("Frame", {
-        AnchorPoint      = Vector2.new(0, 1),
-        Position         = UDim2.new(0, 0, 1, 0),
-        Size             = UDim2.fromOffset(R, R),
-        BackgroundColor3 = self._theme:get("SidebarBg"),
-        BorderSizePixel  = 0,
-        ZIndex           = 20,
-    }, self._root)
-    self._theme:tag(bl, "BackgroundColor3", "SidebarBg")
-
-    -- Bottom-right → Background color
-    local br = Util.create("Frame", {
-        AnchorPoint      = Vector2.new(1, 1),
-        Position         = UDim2.new(1, 0, 1, 0),
-        Size             = UDim2.fromOffset(R, R),
-        BackgroundColor3 = self._theme:get("Background"),
-        BorderSizePixel  = 0,
-        ZIndex           = 20,
-    }, self._root)
-    self._theme:tag(br, "BackgroundColor3", "Background")
-
     self:_makeDraggable()
 end
 
@@ -3026,15 +2986,26 @@ function Window:_buildTopbar(options)
         BorderSizePixel = 0,
         ZIndex          = 3,
     }, self._clip)
+    Util.corner(bar, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(bar, "BackgroundColor3", "TopbarBg")
 
-    -- Bottom border line (instead of UIStroke which causes gaps)
+    -- Cover bottom-left & bottom-right corners (make them square)
+    local fix = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0.5, 0),
+        Position         = UDim2.new(0, 0, 0.5, 0),
+        BackgroundColor3 = self._theme:get("TopbarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 4,
+    }, bar)
+    self._theme:tag(fix, "BackgroundColor3", "TopbarBg")
+
+    -- Bottom border line
     Util.create("Frame", {
         Size             = UDim2.new(1, 0, 0, 1),
         Position         = UDim2.new(0, 0, 1, -1),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 4,
+        ZIndex           = 5,
     }, bar)
 
     Util.padding(bar, 0, 14, 0, 14)
@@ -3138,16 +3109,38 @@ function Window:_buildSidebar(options)
         BackgroundColor3 = self._theme:get("SidebarBg"),
         BorderSizePixel = 0,
     }, self._clip)
+    Util.corner(sidebar, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(sidebar, "BackgroundColor3", "SidebarBg")
 
-    -- Right border line
+    -- Cover top corners & right side (make them square)
+    -- Top fix (covers top-left & top-right rounded corners)
+    local topFix = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0.5, 0),
+        Position         = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = self._theme:get("SidebarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+    }, sidebar)
+    self._theme:tag(topFix, "BackgroundColor3", "SidebarBg")
+
+    -- Right fix (covers right side rounded corners → makes right edge square)
+    local rightFix = Util.create("Frame", {
+        Size             = UDim2.new(0.5, 0, 1, 0),
+        Position         = UDim2.new(0.5, 0, 0, 0),
+        BackgroundColor3 = self._theme:get("SidebarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+    }, sidebar)
+    self._theme:tag(rightFix, "BackgroundColor3", "SidebarBg")
+
+    -- Right border line (on top of fixes)
     Util.create("Frame", {
         Name             = "RightBorder",
         Size             = UDim2.new(0, 1, 1, 0),
         Position         = UDim2.new(1, -1, 0, 0),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 2,
+        ZIndex           = 3,
     }, sidebar)
 
     -- Search bar
@@ -3215,10 +3208,29 @@ function Window:_buildContent()
         BorderSizePixel  = 0,
         ClipsDescendants = true,
     }, self._clip)
+    Util.corner(self._content, UDim.new(0, 10))  -- rounded all corners
     self._theme:tag(self._content, "BackgroundColor3", "Background")
 
-    -- Make sure tab scroll frames match the content size exactly
-    -- by using Size = UDim2.new(1,0,1,0) on each tab frame (already done in Tab.new)
+    -- Cover top & left corners (make square), keep only bottom-right rounded
+    local topFix = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0.5, 0),
+        Position         = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = self._theme:get("Background"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+        ClipsDescendants = false,
+    }, self._content)
+    self._theme:tag(topFix, "BackgroundColor3", "Background")
+
+    local leftFix = Util.create("Frame", {
+        Size             = UDim2.new(0.5, 0, 1, 0),
+        Position         = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = self._theme:get("Background"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+        ClipsDescendants = false,
+    }, self._content)
+    self._theme:tag(leftFix, "BackgroundColor3", "Background")
 end
 
 -- ── Dragging ──────────────────────────────────────────────────────────────────
