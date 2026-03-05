@@ -2504,17 +2504,18 @@ function Group:space()
 end
 Group.Space = Group.space
 
--- Forward element methods (same as Tab but parent = self._frame)
-local function registerFlag(flag, el)
-    if flag and flag ~= "" then Flags.set(flag, el) end
-end
-
+-- Forward element methods (parent = self._frame which is a real Instance)
 local elementNames = { "button","toggle","slider","input","dropdown","colorpicker","keybind","label","divider" }
 for _, name in ipairs(elementNames) do
     Group[name] = function(self, options)
-        local Tab = _G.__GenUI_modules["Core.Tab"]
-        local proxy = setmetatable({ _frame = self._frame, _theme = self._theme, _elements = self._elements }, { __index = Tab })
-        return proxy[name](proxy, options)
+        local Tab = _G.__GenUI_modules and _G.__GenUI_modules["Core.Tab"]
+                 or _G.__GenUI_modules["Core.Tab"]
+        local proxy = {}
+        proxy._frame    = self._frame   -- real GuiObject Instance
+        proxy._theme    = self._theme
+        proxy._elements = self._elements
+        setmetatable(proxy, { __index = Tab })
+        return Tab[name](proxy, options)
     end
     Group[name:sub(1,1):upper() .. name:sub(2)] = Group[name]
 end
@@ -2609,20 +2610,34 @@ function Section:close()
     self._content.Visible = false
 end
 
--- Forward element methods to content frame
-local function registerFlag(flag, el)
-    if flag and flag ~= "" then Flags.set(flag, el) end
+-- Forward all element methods to self._content (which is a real Frame Instance)
+local elementNames = {
+    "button","toggle","slider","input","dropdown",
+    "colorpicker","keybind","label","divider","space","group"
+}
+
+for _, name in ipairs(elementNames) do
+    Section[name] = function(self, options)
+        local Tab = _G.__GenUI_modules and _G.__GenUI_modules["Core.Tab"]
+                 or _G.__GenUI_modules["Core.Tab"]
+        -- Create a minimal tab-like proxy with a real Instance as _frame
+        local proxy = {}
+        proxy._frame    = self._content   -- real GuiObject Instance
+        proxy._theme    = self._theme
+        proxy._elements = self._elements
+        setmetatable(proxy, { __index = Tab })
+        return Tab[name](proxy, options)
+    end
+    -- PascalCase alias
+    local pascal = name:sub(1,1):upper() .. name:sub(2)
+    Section[pascal] = Section[name]
 end
 
-local methods = { "button","toggle","slider","input","dropdown","colorpicker","keybind","label","divider","space","section","group" }
-for _, name in ipairs(methods) do
-    Section[name] = function(self, options)
-        local Tab = _G.__GenUI_modules["Core.Tab"]
-        local proxy = setmetatable({ _frame = self._content, _theme = self._theme, _elements = self._elements }, { __index = Tab })
-        return proxy[name](proxy, options)
-    end
-    Section[name:sub(1,1):upper() .. name:sub(2)] = Section[name]
+-- Nested section
+function Section:section(options)
+    return Section.new(self._content, self._theme, options)
 end
+Section.Section = Section.section
 
 return Section
 end)()
@@ -3233,10 +3248,40 @@ end
 -- Alias (WindUI compatibility)
 Window.Tab = Window.tab
 
--- Create a Section (tab group) on the sidebar
+-- Create a Section (tab group label) on the sidebar
+-- Returns a proxy that creates tabs registered to THIS window
 function Window:section(options)
-    local Section = _G.__GenUI_modules["Core.Section"]
-    return Section.new(self, options)
+    options = options or {}
+
+    -- Add a label to the sidebar tab list
+    if options.Title and options.Title ~= "" then
+        local label = Util.create("TextLabel", {
+            Name             = "SectionLabel_" .. options.Title,
+            Size             = UDim2.new(1, 0, 0, 22),
+            BackgroundTransparency = 1,
+            Text             = options.Title:upper(),
+            TextColor3       = self._theme:get("TextMuted"),
+            TextSize         = 10,
+            Font             = Enum.Font.GothamBold,
+            TextXAlignment   = Enum.TextXAlignment.Left,
+        }, self._tabList)
+        Util.padding(label, 0, 0, 0, 4)
+    end
+
+    -- Return a proxy that forwards :Tab() back to Window
+    local window = self
+    local proxy = {}
+    setmetatable(proxy, {
+        __index = function(_, key)
+            if key == "Tab" or key == "tab" then
+                return function(_, tabOptions)
+                    return window:tab(tabOptions)
+                end
+            end
+            return window[key]
+        end
+    })
+    return proxy
 end
 Window.Section = Window.section
 
