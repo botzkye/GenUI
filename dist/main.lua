@@ -575,163 +575,136 @@ end)()
 -- ── Systems.Icons ──────────────────────────────
 _m["Systems.Icons"] = (function()
 local Icons = {}
-Icons.__index = Icons
 
--- ── Default icon set (Lucide-style names → rbxassetid) ───────────────────────
--- Populate with your actual asset IDs.
--- Format: ["icon-name"] = "rbxassetid://XXXX"
+-- ── Built-in Roblox studio icons (rbxasset) ───────────────────────────────────
+-- Semua ini tersedia tanpa upload di semua Roblox game
+local DEFAULT = {
+    -- Navigation / UI
+    ["home"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["menu"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["settings"]       = "rbxasset://textures/ui/Settings.png",
+    ["search"]         = "rbxasset://textures/ui/SearchIcon.png",
+    ["close"]          = "rbxasset://textures/ui/Close.png",
+    ["back"]           = "rbxasset://textures/ui/TopBar/BackButton.png",
 
-local DEFAULT_SET = {
-    -- Navigation
-    ["home"]              = "rbxassetid://92190299966310",
-    ["menu"]              = "rbxassetid://134384554225463",
-    ["chevron-down"]      = "rbxassetid://0",
-    ["chevron-up"]        = "rbxassetid://0",
-    ["chevron-left"]      = "rbxassetid://0",
-    ["chevron-right"]     = "rbxassetid://0",
-    ["arrow-left"]        = "rbxassetid://0",
-    ["arrow-right"]       = "rbxassetid://0",
+    -- Arrows / chevrons
+    ["chevron-down"]   = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+    ["chevron-up"]     = "rbxasset://textures/ui/Controls/CollapseArrow.png",
+    ["chevron-right"]  = "rbxasset://textures/ui/Controls/ExpandArrow_rtl.png",
+    ["arrow-down"]     = "rbxasset://textures/ui/Controls/ExpandArrow.png",
 
     -- Actions
-    ["search"]            = "rbxassetid://0",
-    ["plus"]              = "rbxassetid://0",
-    ["minus"]             = "rbxassetid://0",
-    ["x"]                 = "rbxassetid://0",
-    ["check"]             = "rbxassetid://0",
-    ["edit"]              = "rbxassetid://0",
-    ["trash"]             = "rbxassetid://0",
-    ["copy"]              = "rbxassetid://0",
-    ["link"]              = "rbxassetid://0",
-    ["download"]          = "rbxassetid://0",
-    ["upload"]            = "rbxassetid://0",
-    ["refresh"]           = "rbxassetid://0",
-    ["lock"]              = "rbxassetid://0",
-    ["unlock"]            = "rbxassetid://0",
-    ["eye"]               = "rbxassetid://0",
-    ["eye-off"]           = "rbxassetid://0",
+    ["plus"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
+    ["check"]          = "rbxasset://textures/ui/Notification/Success.png",
+    ["x"]              = "rbxasset://textures/ui/Close.png",
+    ["trash"]          = "rbxasset://textures/ui/Close.png",
+    ["edit"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["save"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["copy"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["refresh"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["download"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["lock"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["unlock"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["eye"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["eye-off"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
 
-    -- UI
-    ["settings"]          = "rbxassetid://0",
-    ["sliders"]           = "rbxassetid://0",
-    ["toggle-left"]       = "rbxassetid://0",
-    ["toggle-right"]      = "rbxassetid://0",
-    ["mouse-pointer"]     = "rbxassetid://0",
-    ["keyboard"]          = "rbxassetid://0",
-    ["monitor"]           = "rbxassetid://0",
+    -- Files / folders
+    ["file"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["file-text"]      = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["folder"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["folder-open"]    = "rbxasset://textures/ui/GuiImagePlaceholder.png",
 
-    -- Files
-    ["file"]              = "rbxassetid://89294979831077",
-    ["file-plus"]         = "rbxassetid://0",
-    ["file-text"]         = "rbxassetid://89294979831077",
-    ["folder"]            = "rbxassetid://74631950400584",
-    ["folder-open"]       = "rbxassetid://0",
-    ["save"]              = "rbxassetid://0",
+    -- Alerts / status
+    ["info"]           = "rbxasset://textures/ui/Notification/Info.png",
+    ["check-circle"]   = "rbxasset://textures/ui/Notification/Success.png",
+    ["alert"]          = "rbxasset://textures/ui/Notification/Warning.png",
+    ["bell"]           = "rbxasset://textures/ui/Notification/Info.png",
+    ["bell-off"]       = "rbxasset://textures/ui/Notification/Info.png",
+    ["x-circle"]       = "rbxasset://textures/ui/Notification/Error.png",
 
-    -- Alerts
-    ["bell"]              = "rbxassetid://0",
-    ["bell-off"]          = "rbxassetid://0",
-    ["alert-circle"]      = "rbxassetid://0",
-    ["info"]              = "rbxassetid://119096461016615",
-    ["check-circle"]      = "rbxassetid://132438947521974",
-    ["x-circle"]          = "rbxassetid://0",
+    -- Controls
+    ["sliders"]        = "rbxasset://textures/ui/Settings.png",
+    ["toggle-right"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["mouse-pointer"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["keyboard"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["monitor"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["color-swatch"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["sun"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["moon"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["star"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
 
-    -- Misc
-    ["bird"]              = "rbxassetid://0",
-    ["star"]              = "rbxassetid://0",
-    ["heart"]             = "rbxassetid://0",
-    ["github"]            = "rbxassetid://0",
-    ["discord"]           = "rbxassetid://0",
-    ["color-swatch"]      = "rbxassetid://0",
-    ["sun"]               = "rbxassetid://0",
-    ["moon"]              = "rbxassetid://0",
+    -- Window controls
+    ["minimize"]       = "rbxasset://textures/ui/Controls/CollapseArrow.png",
+    ["maximize"]       = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+
+    -- Social
+    ["github"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["discord"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
 }
 
--- ── Named icon sets ───────────────────────────────────────────────────────────
-
-local NAMED_SETS = {
+-- Named sets (e.g. "solar:home-bold")
+local SETS = {
     solar = {
-        ["home-bold"]               = "rbxassetid://92190299966310",
-        ["info-square-bold"]        = "rbxassetid://119096461016615",
-        ["check-square-bold"]       = "rbxassetid://132438947521974",
-        ["cursor-square-bold"]      = "rbxassetid://120306472146156",
-        ["file-text-bold"]          = "rbxassetid://89294979831077",
-        ["folder-with-files-bold"]  = "rbxassetid://74631950400584",
-        ["hamburger-menu-bold"]     = "rbxassetid://134384554225463",
-        ["home-2-bold"]             = "rbxassetid://92190299966310",
-        ["password-bold"]           = "rbxassetid://109919668957167",
-        ["transfer-horizontal-bold"]= "rbxassetid://125444491429160",
-        ["bell-bold"]               = "rbxassetid://0",
-        ["folder-2-bold-duotone"]   = "rbxassetid://74631950400584",
+        ["home-bold"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["info-square-bold"]     = "rbxasset://textures/ui/Notification/Info.png",
+        ["check-square-bold"]    = "rbxasset://textures/ui/Notification/Success.png",
+        ["cursor-square-bold"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["file-text-bold"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["folder-with-files-bold"] = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["hamburger-menu-bold"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["settings-bold"]        = "rbxasset://textures/ui/Settings.png",
+        ["bell-bold"]            = "rbxasset://textures/ui/Notification/Info.png",
     },
 }
 
--- ── Fallback asset (used when icon not found) ─────────────────────────────────
-local FALLBACK = "rbxassetid://0"
+local FALLBACK = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 
 -- ── API ───────────────────────────────────────────────────────────────────────
 
--- Resolve an icon name to a Roblox asset string
--- Returns a valid rbxassetid:// string
 function Icons.resolve(name)
-    if not name or name == "" then
-        return FALLBACK
-    end
+    if not name or name == "" then return FALLBACK end
 
-    -- Direct asset passthrough
-    if name:sub(1, 13) == "rbxassetid://" then
-        return name
-    end
+    -- Direct passthrough
+    if name:sub(1, 13) == "rbxassetid://" then return name end
+    if name:sub(1, 10) == "rbxasset:/" then return name end
 
     -- Named set: "solar:home-bold"
     if name:find(":") then
         local setName, iconName = name:match("^(.-)%:(.+)$")
-        if setName and iconName then
-            local set = NAMED_SETS[setName]
-            if set then
-                return set[iconName] or FALLBACK
-            end
+        if setName and iconName and SETS[setName] then
+            return SETS[setName][iconName] or FALLBACK
         end
         return FALLBACK
     end
 
-    -- Default set lookup
-    return DEFAULT_SET[name] or FALLBACK
+    return DEFAULT[name] or FALLBACK
 end
 
--- Add icons to an existing named set (or create new set)
 function Icons.add(setName, iconMap)
-    if not NAMED_SETS[setName] then
-        NAMED_SETS[setName] = {}
-    end
-    for name, assetId in pairs(iconMap) do
-        NAMED_SETS[setName][name] = assetId
-    end
+    SETS[setName] = SETS[setName] or {}
+    for k, v in pairs(iconMap) do SETS[setName][k] = v end
 end
 
--- Add icons to the default set
 function Icons.addDefault(iconMap)
-    for name, assetId in pairs(iconMap) do
-        DEFAULT_SET[name] = assetId
-    end
+    for k, v in pairs(iconMap) do DEFAULT[k] = v end
 end
 
--- Check if an icon name resolves to a real asset (not the fallback)
 function Icons.exists(name)
-    return Icons.resolve(name) ~= FALLBACK
+    local r = Icons.resolve(name)
+    return r ~= FALLBACK
 end
 
--- Apply an icon to an ImageLabel/ImageButton
--- Handles visibility: hides the image if no icon found
 function Icons.apply(imageInstance, name, color)
+    if not name or name == "" then
+        imageInstance.Visible = false
+        return
+    end
     local asset = Icons.resolve(name)
     imageInstance.Image = asset
-
+    imageInstance.Visible = true
     if color then
         imageInstance.ImageColor3 = color
     end
-
-    -- Hide if no real asset
-    imageInstance.Visible = (asset ~= FALLBACK and asset ~= "rbxassetid://0")
 end
 
 return Icons
@@ -1776,12 +1749,14 @@ function Input.new(parent, theme, options)
         TextEditable     = not self._locked,
     }, inputFrame)
 
-    -- Focus highlight
+    -- Focus highlight — reuse one UIStroke
+    local stroke = Util.stroke(inputFrame, theme:get("Border"), 1)
+
     self._box.Focused:Connect(function()
-        Util.stroke(inputFrame, theme:get("Accent"), 1)
+        Tween.color(stroke, "Color", theme:get("Accent"), 0.12)
     end)
     self._box.FocusLost:Connect(function()
-        Util.stroke(inputFrame, theme:get("Border"), 1)
+        Tween.color(stroke, "Color", theme:get("Border"), 0.12)
         self._value = self._box.Text
         self._callback(self._value)
     end)
@@ -2971,13 +2946,14 @@ function Window:_build(options)
     Util.stroke(self._root, self._theme:get("Border"), 1)
     self._theme:tag(self._root, "BackgroundColor3", "Background")
 
-    -- Clip inner contents
+    -- Clip inner contents — must have same corner as root to avoid sharp corners
     local clip = Util.create("Frame", {
         Name             = "ClipFrame",
         Size             = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         ClipsDescendants = true,
     }, self._root)
+    Util.corner(clip, UDim.new(0, 10))
 
     self._clip = clip
 
@@ -3006,7 +2982,7 @@ function Window:_buildTopbar(options)
         ZIndex           = 4,
     }, bar)
 
-    Util.padding(bar, 0, 12, 0, 14)
+    Util.padding(bar, 0, 14, 0, 14)
 
     -- Title row
     local row = Util.create("Frame", {
@@ -3019,12 +2995,15 @@ function Window:_buildTopbar(options)
         Padding           = UDim.new(0, 8),
     })
 
+    -- Title row content
+
     -- Window icon
     if options.Icon then
         local icon = Util.create("ImageLabel", {
-            Size             = UDim2.new(0, 18, 0, 18),
+            Size             = UDim2.new(0, 16, 0, 16),
             BackgroundTransparency = 1,
             ImageColor3      = self._theme:get("Accent"),
+            LayoutOrder      = 0,
         }, row)
         Icons.apply(icon, options.Icon, self._theme:get("Accent"))
         self._theme:tag(icon, "ImageColor3", "Accent")
@@ -3040,30 +3019,30 @@ function Window:_buildTopbar(options)
         Font             = Enum.Font.GothamBold,
         TextXAlignment   = Enum.TextXAlignment.Left,
         TextTruncate     = Enum.TextTruncate.AtEnd,
+        LayoutOrder      = 1,
     }, row)
 
-    -- Control buttons (close / minimize)
+    -- Control buttons pinned to right
     local controls = Util.create("Frame", {
-        Size             = UDim2.new(0, 56, 0, 20),
+        Name             = "Controls",
+        AnchorPoint      = Vector2.new(1, 0.5),
+        Position         = UDim2.new(1, -14, 0.5, 0),
+        Size             = UDim2.new(0, 50, 0, 22),
         BackgroundTransparency = 1,
-        LayoutOrder      = 99,
     }, bar)
-    controls.AnchorPoint = Vector2.new(1, 0.5)
-    controls.Position    = UDim2.new(1, 0, 0.5, 0)
-
     Util.listLayout(controls, {
-        FillDirection     = Enum.FillDirection.Horizontal,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
+        FillDirection       = Enum.FillDirection.Horizontal,
+        VerticalAlignment   = Enum.VerticalAlignment.Center,
         HorizontalAlignment = Enum.HorizontalAlignment.Right,
-        Padding           = UDim.new(0, 6),
+        Padding             = UDim.new(0, 6),
     })
 
-    -- Minimize
+    -- Minimize button
     self:_makeControlBtn(controls, "–", self._theme:get("Warning"), function()
         self:_minimize()
     end)
 
-    -- Close
+    -- Close button
     self:_makeControlBtn(controls, "×", self._theme:get("Danger"), function()
         self:toggle()
     end)
@@ -3077,16 +3056,19 @@ function Window:_makeControlBtn(parent, symbol, color, callback)
         BackgroundColor3 = self._theme:get("SurfaceHover"),
         Text             = symbol,
         TextColor3       = color,
-        TextSize         = 13,
+        TextSize         = 14,
         Font             = Enum.Font.GothamBold,
+        AutoButtonColor  = false,
     }, parent)
     Util.corner(btn, UDim.new(1, 0))
 
     btn.MouseEnter:Connect(function()
-        Tween.color(btn, "BackgroundColor3", self._theme:get("SurfaceActive"), 0.12)
+        Tween.color(btn, "BackgroundColor3", color, 0.12)
+        Tween.color(btn, "TextColor3", Color3.new(0,0,0), 0.12)
     end)
     btn.MouseLeave:Connect(function()
         Tween.color(btn, "BackgroundColor3", self._theme:get("SurfaceHover"), 0.12)
+        Tween.color(btn, "TextColor3", color, 0.12)
     end)
     btn.MouseButton1Click:Connect(callback)
 
