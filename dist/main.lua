@@ -393,11 +393,11 @@ local THEMES = {
         ToggleOff       = Color3.fromHex("#2a2a2a"),
         ToggleKnob      = Color3.fromHex("#f0f0f0"),
 
-        -- Topbar
-        TopbarBg        = Color3.fromHex("#0d0d0d"),
+        -- Topbar — slightly lighter than background
+        TopbarBg        = Color3.fromHex("#111111"),
         TopbarBorder    = Color3.fromHex("#1e1e1e"),
 
-        -- Sidebar
+        -- Sidebar — slightly lighter than background
         SidebarBg       = Color3.fromHex("#0f0f0f"),
         SidebarBorder   = Color3.fromHex("#1a1a1a"),
         TabActive       = Color3.fromHex("#1c1c1c"),
@@ -2956,8 +2956,7 @@ function Window:_build(options)
     self._fullSize  = size
     self._minimized = false
 
-    -- Root frame
-    -- In modern Roblox (2023+), ClipsDescendants + UICorner works correctly
+    -- Root — ClipsDescendants FALSE so UICorner stays visible
     self._root = Util.create("Frame", {
         Name             = "WindowFrame",
         AnchorPoint      = Vector2.new(0.5, 0.5),
@@ -2965,25 +2964,23 @@ function Window:_build(options)
         Size             = size,
         BackgroundColor3 = self._theme:get("Background"),
         BorderSizePixel  = 0,
-        ClipsDescendants = true,
+        ClipsDescendants = false,
     }, self._gui)
     Util.corner(self._root, UDim.new(0, 10))
+    self._theme:tag(self._root, "BackgroundColor3", "Background")
 
-    -- UIStroke as separate sibling (not child) so it's not clipped
-    local strokeFrame = Util.create("Frame", {
+    -- Stroke frame as sibling (not child) so it renders on top without clipping
+    self._strokeFrame = Util.create("Frame", {
         Name             = "WindowStroke",
         AnchorPoint      = Vector2.new(0.5, 0.5),
         Position         = UDim2.new(0.5, 0, 0.5, 0),
         Size             = size,
         BackgroundTransparency = 1,
         BorderSizePixel  = 0,
-        ZIndex           = self._root.ZIndex + 10,
+        ZIndex           = 50,
     }, self._gui)
-    Util.corner(strokeFrame, UDim.new(0, 10))
-    Util.stroke(strokeFrame, self._theme:get("Border"), 1)
-
-    self._theme:tag(self._root, "BackgroundColor3", "Background")
-    self._strokeFrame = strokeFrame
+    Util.corner(self._strokeFrame, UDim.new(0, 10))
+    Util.stroke(self._strokeFrame, self._theme:get("Border"), 1)
 
     self._clip = self._root
 
@@ -3001,16 +2998,26 @@ function Window:_buildTopbar(options)
         BorderSizePixel = 0,
         ZIndex          = 3,
     }, self._clip)
+    Util.corner(bar, UDim.new(0, 10))
     self._theme:tag(bar, "BackgroundColor3", "TopbarBg")
-    -- No UICorner here — root's UICorner handles top corners
 
-    -- Bottom border line
+    -- Fix: cover bottom half to make bottom corners square
+    local fix = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0, 12),
+        Position         = UDim2.new(0, 0, 1, -12),
+        BackgroundColor3 = self._theme:get("TopbarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 4,
+    }, bar)
+    self._theme:tag(fix, "BackgroundColor3", "TopbarBg")
+
+    -- Bottom border
     Util.create("Frame", {
         Size             = UDim2.new(1, 0, 0, 1),
         Position         = UDim2.new(0, 0, 1, -1),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 4,
+        ZIndex           = 5,
     }, bar)
 
     Util.padding(bar, 0, 14, 0, 14)
@@ -3114,8 +3121,28 @@ function Window:_buildSidebar(options)
         BackgroundColor3 = self._theme:get("SidebarBg"),
         BorderSizePixel = 0,
     }, self._clip)
+    Util.corner(sidebar, UDim.new(0, 10))
     self._theme:tag(sidebar, "BackgroundColor3", "SidebarBg")
-    -- No UICorner — root handles bottom-left corner visually
+
+    -- Fix top corners (make square)
+    local topFix = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0, 12),
+        Position         = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = self._theme:get("SidebarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+    }, sidebar)
+    self._theme:tag(topFix, "BackgroundColor3", "SidebarBg")
+
+    -- Fix right corners (make square)
+    local rightFix = Util.create("Frame", {
+        Size             = UDim2.new(0, 12, 1, 0),
+        Position         = UDim2.new(1, -12, 0, 0),
+        BackgroundColor3 = self._theme:get("SidebarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+    }, sidebar)
+    self._theme:tag(rightFix, "BackgroundColor3", "SidebarBg")
 
     -- Right border line
     Util.create("Frame", {
@@ -3124,7 +3151,7 @@ function Window:_buildSidebar(options)
         Position         = UDim2.new(1, -1, 0, 0),
         BackgroundColor3 = self._theme:get("Border"),
         BorderSizePixel  = 0,
-        ZIndex           = 2,
+        ZIndex           = 3,
     }, sidebar)
 
     -- Search bar
