@@ -6,7 +6,7 @@
 ## Quick Start
 
 ```lua
-local GenUI = loadstring(game:HttpGet("YOUR_CDN_URL/dist/main.lua"))()
+local GenUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/botzkye/GenUI/refs/heads/main/dist/main.lua"))()
 
 local Window = GenUI:CreateWindow({
     Title  = "My Hub",
