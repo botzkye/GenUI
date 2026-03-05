@@ -1154,16 +1154,17 @@ function Button.new(parent, theme, options)
     local justify     = options.Justify or "Left"
     local iconAlign   = options.IconAlign or "Left"
 
-    -- Root frame
+    -- Root frame — AutomaticSize so padding top=bottom always equal
     self._root = Util.create("Frame", {
         Name             = "Button",
-        Size             = UDim2.new(1, 0, 0, HEIGHT),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 0, 12, 0, 12)
+    Util.padding(self._root, 10, 12, 10, 12)
 
     -- Clickable button overlay
     local btn = Util.create("TextButton", {
@@ -1320,13 +1321,14 @@ function Toggle.new(parent, theme, options)
     -- Root
     self._root = Util.create("Frame", {
         Name             = "Toggle",
-        Size             = UDim2.new(1, 0, 0, 36),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 0, 12, 0, 12)
+    Util.padding(self._root, 10, 12, 10, 12)
 
     -- Row
     local row = Util.create("Frame", {
@@ -1360,7 +1362,6 @@ function Toggle.new(parent, theme, options)
         }, textStack)
 
         if options.Desc then
-            self._root.Size = UDim2.new(1, 0, 0, 52)
             Util.create("TextLabel", {
                 Size             = UDim2.new(1, 0, 0, 14),
                 BackgroundTransparency = 1,
@@ -1517,14 +1518,15 @@ function Slider.new(parent, theme, options)
 
     self._root = Util.create("Frame", {
         Name             = "Slider",
-        Size             = UDim2.new(1, 0, 0, hasTitle and (hasDesc and 64 or 52) or 36),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 8, 12, 8, 12)
-    Util.listLayout(self._root, { Padding = UDim.new(0, 4) })
+    Util.padding(self._root, 10, 12, 10, 12)
+    Util.listLayout(self._root, { Padding = UDim.new(0, 8) })
 
     -- Title row
     if hasTitle then
@@ -1680,18 +1682,18 @@ function Input.new(parent, theme, options)
     self._type     = options.Type or "Input"
 
     local isTextarea = self._type == "Textarea"
-    local baseH = isTextarea and 80 or (options.Desc and 68 or 52)
 
     self._root = Util.create("Frame", {
         Name             = "Input",
-        Size             = UDim2.new(1, 0, 0, baseH),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 8, 10, 8, 10)
-    Util.listLayout(self._root, { Padding = UDim.new(0, 5) })
+    Util.padding(self._root, 10, 10, 10, 10)
+    Util.listLayout(self._root, { Padding = UDim.new(0, 6) })
 
     -- Title
     if options.Title then
@@ -1834,13 +1836,14 @@ function Dropdown.new(parent, theme, options)
     -- ── Root ──────────────────────────────────────────────────────────────────
     self._root = Util.create("Frame", {
         Name             = "Dropdown",
-        Size             = UDim2.new(1, 0, 0, options.Title and 60 or 36),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 8, 10, 8, 10)
+    Util.padding(self._root, 10, 10, 10, 10)
     Util.listLayout(self._root, { Padding = UDim.new(0, 5) })
 
     -- Title label
@@ -2174,6 +2177,10 @@ local Tween = _G.__GenUI_modules["Util.Tween"]
 local Colorpicker = {}
 Colorpicker.__index = Colorpicker
 
+local SWATCH_W = 44
+local SWATCH_H = 22
+local PAD      = 10  -- equal padding all sides
+
 function Colorpicker.new(parent, theme, options)
     local self = setmetatable({}, Colorpicker)
     options = options or {}
@@ -2184,20 +2191,25 @@ function Colorpicker.new(parent, theme, options)
     self._callback     = options.Callback or function() end
     self._open         = false
 
+    local hasTitle = options.Title ~= nil
+
+    -- Root — AutomaticSize so it grows with picker popup
     self._root = Util.create("Frame", {
         Name             = "Colorpicker",
-        Size             = UDim2.new(1, 0, 0, options.Title and 52 or 36),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 8, 10, 8, 10)
-    Util.listLayout(self._root, { Padding = UDim.new(0, 5) })
+    Util.padding(self._root, PAD, PAD, PAD, PAD)
+    Util.listLayout(self._root, { Padding = UDim.new(0, 6) })
 
-    if options.Title then
+    -- Title
+    if hasTitle then
         Util.create("TextLabel", {
-            Size             = UDim2.new(1, -36, 0, 16),
+            Size             = UDim2.new(1, 0, 0, 14),
             BackgroundTransparency = 1,
             Text             = options.Title,
             TextColor3       = theme:get("TextPrimary"),
@@ -2207,123 +2219,132 @@ function Colorpicker.new(parent, theme, options)
         }, self._root)
     end
 
-    -- Swatch row
+    -- Swatch row: [color box] [hex label]
     local swatchRow = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0, 24),
+        Size             = UDim2.new(1, 0, 0, SWATCH_H),
         BackgroundTransparency = 1,
     }, self._root)
+    Util.listLayout(swatchRow, {
+        FillDirection     = Enum.FillDirection.Horizontal,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        Padding           = UDim.new(0, 8),
+    })
 
-    -- Color swatch preview
+    -- Color swatch button
     self._swatch = Util.create("TextButton", {
-        Size             = UDim2.new(0, 50, 1, 0),
+        Size             = UDim2.new(0, SWATCH_W, 1, 0),
         BackgroundColor3 = self._color,
         Text             = "",
         AutoButtonColor  = false,
+        LayoutOrder      = 0,
     }, swatchRow)
     Util.corner(self._swatch, UDim.new(0, 4))
     Util.stroke(self._swatch, theme:get("Border"), 1)
 
     -- Hex label
     self._hexLabel = Util.create("TextLabel", {
-        Position         = UDim2.new(0, 58, 0, 0),
-        Size             = UDim2.new(1, -58, 1, 0),
+        Size             = UDim2.new(1, -(SWATCH_W + 8), 1, 0),
         BackgroundTransparency = 1,
         Text             = self:_toHex(),
         TextColor3       = theme:get("TextSecondary"),
-        TextSize         = 11,
+        TextSize         = 12,
         Font             = Enum.Font.GothamBold,
         TextXAlignment   = Enum.TextXAlignment.Left,
+        LayoutOrder      = 1,
     }, swatchRow)
 
-    -- Click swatch to open basic hex input (simplified picker)
     self._swatch.MouseButton1Click:Connect(function()
-        self:_togglePicker()
+        if self._open then self:_closePicker() else self:_openPicker() end
     end)
 
     return self
 end
 
 function Colorpicker:_toHex()
-    local r = math.floor(self._color.R * 255)
-    local g = math.floor(self._color.G * 255)
-    local b = math.floor(self._color.B * 255)
-    return string.format("#%02X%02X%02X", r, g, b)
-end
-
-function Colorpicker:_togglePicker()
-    if self._open then
-        self:_closePicker()
-    else
-        self:_openPicker()
-    end
+    return string.format("#%02X%02X%02X",
+        math.floor(self._color.R * 255),
+        math.floor(self._color.G * 255),
+        math.floor(self._color.B * 255))
 end
 
 function Colorpicker:_openPicker()
     self._open = true
 
-    local picker = Util.create("Frame", {
-        Name             = "ColorPickerPopup",
+    -- Picker popup inside root (no clip, has corner)
+    self._picker = Util.create("Frame", {
+        Name             = "Picker",
         Size             = UDim2.new(1, 0, 0, 0),
-        BackgroundColor3 = self._theme:get("Elevated"),
+        AutomaticSize    = Enum.AutomaticSize.Y,
+        BackgroundColor3 = self._theme:get("Background"),
         BorderSizePixel  = 0,
-        ClipsDescendants = true,
-        ZIndex           = 10,
+        ClipsDescendants = false,
     }, self._root)
-    Util.corner(picker, UDim.new(0, 6))
-    Util.stroke(picker, self._theme:get("Border"), 1)
-    Util.padding(picker, 8, 8, 8, 8)
-    Util.listLayout(picker, { Padding = UDim.new(0, 6) })
+    Util.corner(self._picker, UDim.new(0, 4))
+    Util.stroke(self._picker, self._theme:get("Border"), 1)
+    Util.padding(self._picker, 8, 8, 8, 8)
+    Util.listLayout(self._picker, { Padding = UDim.new(0, 6) })
 
-    -- Hex input
+    -- HEX label
     Util.create("TextLabel", {
-        Size             = UDim2.new(1, 0, 0, 14),
+        Size             = UDim2.new(1, 0, 0, 12),
         BackgroundTransparency = 1,
-        Text             = "HEX",
+        Text             = "HEX COLOR",
         TextColor3       = self._theme:get("TextMuted"),
         TextSize         = 10,
         Font             = Enum.Font.GothamBold,
         TextXAlignment   = Enum.TextXAlignment.Left,
-    }, picker)
+    }, self._picker)
+
+    -- Hex input
+    local inputFrame = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0, 28),
+        BackgroundColor3 = self._theme:get("Surface"),
+        BorderSizePixel  = 0,
+    }, self._picker)
+    Util.corner(inputFrame, UDim.new(0, 4))
+    Util.stroke(inputFrame, self._theme:get("Border"), 1)
+    Util.padding(inputFrame, 0, 8, 0, 8)
 
     local hexInput = Util.create("TextBox", {
-        Size             = UDim2.new(1, 0, 0, 26),
-        BackgroundColor3 = self._theme:get("Background"),
+        Size             = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
         Text             = self:_toHex(),
         TextColor3       = self._theme:get("TextPrimary"),
-        TextSize         = 12,
+        PlaceholderText  = "#RRGGBB",
+        PlaceholderColor3 = self._theme:get("TextMuted"),
+        TextSize         = 13,
         Font             = Enum.Font.GothamBold,
-        TextXAlignment   = Enum.TextXAlignment.Center,
+        TextXAlignment   = Enum.TextXAlignment.Left,
         ClearTextOnFocus = false,
-    }, picker)
-    Util.corner(hexInput, UDim.new(0, 4))
-    Util.stroke(hexInput, self._theme:get("Border"), 1)
+    }, inputFrame)
 
+    local stroke = Util.stroke(inputFrame, self._theme:get("Border"), 1)
+    hexInput.Focused:Connect(function()
+        Tween.color(stroke, "Color", self._theme:get("Accent"), 0.1)
+    end)
     hexInput.FocusLost:Connect(function()
-        local hex = hexInput.Text:gsub("#", "")
+        Tween.color(stroke, "Color", self._theme:get("Border"), 0.1)
+        local hex = hexInput.Text:gsub("[^%x]", "")
         if #hex == 6 then
             local r = tonumber(hex:sub(1,2), 16) or 0
             local g = tonumber(hex:sub(3,4), 16) or 0
             local b = tonumber(hex:sub(5,6), 16) or 0
             self:set(Color3.fromRGB(r, g, b))
+            hexInput.Text = self:_toHex()
         end
     end)
-
-    Tween.to(picker, { Size = UDim2.new(1, 0, 0, 72) }, 0.15)
-    self._picker = picker
 end
 
 function Colorpicker:_closePicker()
     self._open = false
     if self._picker then
-        Tween.to(self._picker, { Size = UDim2.new(1, 0, 0, 0) }, 0.12)
-        task.delay(0.13, function()
-            if self._picker then self._picker:Destroy(); self._picker = nil end
-        end)
+        self._picker:Destroy()
+        self._picker = nil
     end
 end
 
 function Colorpicker:set(color, transparency)
-    self._color = color or self._color
+    self._color        = color or self._color
     self._transparency = transparency or self._transparency
     self._swatch.BackgroundColor3 = self._color
     self._hexLabel.Text = self:_toHex()
@@ -2359,13 +2380,14 @@ function Keybind.new(parent, theme, options)
 
     self._root = Util.create("Frame", {
         Name             = "Keybind",
-        Size             = UDim2.new(1, 0, 0, options.Title and 52 or 36),
+        Size             = UDim2.new(1, 0, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
         BackgroundColor3 = theme:get("Surface"),
         BorderSizePixel  = 0,
     }, parent)
     Util.corner(self._root, UDim.new(0, 6))
     Util.stroke(self._root, theme:get("Border"), 1)
-    Util.padding(self._root, 8, 10, 8, 10)
+    Util.padding(self._root, 10, 10, 10, 10)
     Util.listLayout(self._root, { Padding = UDim.new(0, 4) })
 
     if options.Title then
@@ -2931,8 +2953,10 @@ end
 
 function Window:_build(options)
     local size = options.Size or UDim2.fromOffset(580, 420)
+    self._fullSize  = size
+    self._minimized = false
 
-    -- Root frame
+    -- Root — no ClipsDescendants so UICorner is preserved
     self._root = Util.create("Frame", {
         Name             = "WindowFrame",
         AnchorPoint      = Vector2.new(0.5, 0.5),
@@ -2946,20 +2970,51 @@ function Window:_build(options)
     Util.stroke(self._root, self._theme:get("Border"), 1)
     self._theme:tag(self._root, "BackgroundColor3", "Background")
 
-    -- Clip inner contents — must have same corner as root to avoid sharp corners
-    local clip = Util.create("Frame", {
-        Name             = "ClipFrame",
-        Size             = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        ClipsDescendants = true,
-    }, self._root)
-    Util.corner(clip, UDim.new(0, 10))
-
-    self._clip = clip
+    self._clip = self._root
 
     self:_buildTopbar(options)
     self:_buildSidebar(options)
     self:_buildContent()
+
+    -- Corner punch-out masks — cover leaked pixels at each corner
+    -- Each mask matches the color of whatever frame sits behind that corner
+    local R = 10
+
+    -- Top-left & Top-right → Topbar color
+    for _, side in ipairs({ {0, 0}, {1, 0} }) do
+        local m = Util.create("Frame", {
+            AnchorPoint      = Vector2.new(side[1], side[2]),
+            Position         = UDim2.new(side[1], 0, side[2], 0),
+            Size             = UDim2.fromOffset(R, R),
+            BackgroundColor3 = self._theme:get("TopbarBg"),
+            BorderSizePixel  = 0,
+            ZIndex           = 20,
+        }, self._root)
+        self._theme:tag(m, "BackgroundColor3", "TopbarBg")
+    end
+
+    -- Bottom-left → Sidebar color
+    local bl = Util.create("Frame", {
+        AnchorPoint      = Vector2.new(0, 1),
+        Position         = UDim2.new(0, 0, 1, 0),
+        Size             = UDim2.fromOffset(R, R),
+        BackgroundColor3 = self._theme:get("SidebarBg"),
+        BorderSizePixel  = 0,
+        ZIndex           = 20,
+    }, self._root)
+    self._theme:tag(bl, "BackgroundColor3", "SidebarBg")
+
+    -- Bottom-right → Background color
+    local br = Util.create("Frame", {
+        AnchorPoint      = Vector2.new(1, 1),
+        Position         = UDim2.new(1, 0, 1, 0),
+        Size             = UDim2.fromOffset(R, R),
+        BackgroundColor3 = self._theme:get("Background"),
+        BorderSizePixel  = 0,
+        ZIndex           = 20,
+    }, self._root)
+    self._theme:tag(br, "BackgroundColor3", "Background")
+
     self:_makeDraggable()
 end
 
@@ -3365,15 +3420,15 @@ function Window:section(options)
 end
 Window.Section = Window.section
 
--- Toggle window visibility
+-- Toggle window visibility (hide/show)
 function Window:toggle()
     self._visible = not self._visible
     if self._visible then
         self._root.Visible = true
-        Tween.to(self._root, { Size = self._root.Size }, 0.2, Enum.EasingStyle.Back)
+        self._minimized = false
+        Tween.to(self._root, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
     else
-        local s = self._root.Size
-        Tween.to(self._root, { Size = UDim2.new(s.X.Scale, s.X.Offset, 0, 0) }, 0.18)
+        Tween.to(self._root, { Size = UDim2.fromOffset(self._fullSize.X.Offset, 0) }, 0.18)
         task.delay(0.2, function()
             if not self._visible then
                 self._root.Visible = false
@@ -3382,9 +3437,20 @@ function Window:toggle()
     end
 end
 
--- Minimize (same as toggle for now)
+-- Minimize — collapse to just the topbar
 function Window:_minimize()
-    self:toggle()
+    self._minimized = not self._minimized
+    if self._minimized then
+        -- Collapse: keep width, height = topbar only
+        Tween.to(self._root, {
+            Size = UDim2.fromOffset(self._fullSize.X.Offset, TOPBAR_H)
+        }, 0.2, Enum.EasingStyle.Quart)
+    else
+        -- Restore full size
+        Tween.to(self._root, {
+            Size = self._fullSize
+        }, 0.22, Enum.EasingStyle.Back)
+    end
 end
 
 -- Switch theme
