@@ -2923,6 +2923,7 @@ function Window.new(screenGui, options, notifSystem)
     self._tabs       = {}
     self._activeTab  = nil
     self._connections = {}
+    self._windowIcon  = options.Icon
 
     -- Theme
     self._theme = Theme.new(options.Theme or "Dark")
@@ -3231,8 +3232,8 @@ function Window:_makeDraggable()
 
     self._topbar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging  = true
-            startPos  = self._root.Position
+            dragging   = true
+            startPos   = self._root.Position
             startMouse = input.Position
         end
     end)
@@ -3246,12 +3247,15 @@ function Window:_makeDraggable()
     game:GetService("UserInputService").InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - startMouse
-            self._root.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
+            local newPos = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
             )
+            self._root.Position = newPos
+            -- strokeFrame must follow root exactly
+            if self._strokeFrame then
+                self._strokeFrame.Position = newPos
+            end
         end
     end)
 end
@@ -3428,11 +3432,11 @@ function Window:toggle()
     if self._visible then
         self._root.Visible = true
         if self._strokeFrame then self._strokeFrame.Visible = true end
+        if self._iconBtn then self._iconBtn.Visible = false end
         Tween.to(self._root, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
         if self._strokeFrame then
             Tween.to(self._strokeFrame, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
         end
-        self._minimized = false
     else
         Tween.to(self._root, { Size = UDim2.fromOffset(self._fullSize.X.Offset, 0) }, 0.18)
         task.delay(0.2, function()
@@ -3444,16 +3448,76 @@ function Window:toggle()
     end
 end
 
-function Window:_minimize()
-    self._minimized = not self._minimized
-    local targetSize = self._minimized
-        and UDim2.fromOffset(self._fullSize.X.Offset, TOPBAR_H)
-        or  self._fullSize
-    local style = self._minimized and Enum.EasingStyle.Quart or Enum.EasingStyle.Back
-    Tween.to(self._root, { Size = targetSize }, 0.2, style)
+function Window:Open()
+    self._visible = true
+    self._root.Visible = true
+    if self._strokeFrame then self._strokeFrame.Visible = true end
+    if self._iconBtn then self._iconBtn.Visible = false end
+    self._root.Size = UDim2.fromOffset(self._fullSize.X.Offset, 0)
+    Tween.to(self._root, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
     if self._strokeFrame then
-        Tween.to(self._strokeFrame, { Size = targetSize }, 0.2, style)
+        self._strokeFrame.Size = UDim2.fromOffset(self._fullSize.X.Offset, 0)
+        Tween.to(self._strokeFrame, { Size = self._fullSize }, 0.22, Enum.EasingStyle.Back)
     end
+end
+Window.open = Window.Open
+
+-- Minimize → hide window, show draggable icon button
+function Window:_minimize()
+    -- Hide window
+    self._root.Visible = false
+    if self._strokeFrame then self._strokeFrame.Visible = false end
+    self._visible = false
+
+    -- Create icon button if not exists
+    if not self._iconBtn then
+        self:_createIconBtn()
+    end
+    self._iconBtn.Visible = true
+end
+
+function Window:_createIconBtn()
+    local btn = Util.create("ImageButton", {
+        Name             = "GenUI_IconBtn",
+        Size             = UDim2.fromOffset(46, 46),
+        Position         = UDim2.new(0, 20, 0.5, -23),
+        BackgroundColor3 = self._theme:get("Surface"),
+        BorderSizePixel  = 0,
+        AutoButtonColor  = false,
+        Draggable        = true,
+        ZIndex           = 10,
+    }, self._gui)
+    Util.corner(btn, UDim.new(0, 12))
+    Util.stroke(btn, self._theme:get("Accent"), 2)
+
+    -- Icon image (window icon or default)
+    local img = Util.create("ImageLabel", {
+        Size             = UDim2.new(0, 26, 0, 26),
+        AnchorPoint      = Vector2.new(0.5, 0.5),
+        Position         = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1,
+        ImageColor3      = self._theme:get("Accent"),
+    }, btn)
+    if self._windowIcon then
+        Icons.apply(img, self._windowIcon, self._theme:get("Accent"))
+    else
+        img.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    end
+
+    -- Hover effect
+    btn.MouseEnter:Connect(function()
+        Tween.to(btn, { Size = UDim2.fromOffset(52, 52) }, 0.15, Enum.EasingStyle.Back)
+    end)
+    btn.MouseLeave:Connect(function()
+        Tween.to(btn, { Size = UDim2.fromOffset(46, 46) }, 0.15)
+    end)
+
+    -- Click → open window
+    btn.MouseButton1Click:Connect(function()
+        self:Open()
+    end)
+
+    self._iconBtn = btn
 end
 
 -- Switch theme
@@ -3481,11 +3545,10 @@ Window.SetToggleKey = Window.setToggleKey
 
 -- Destroy window and cleanup
 function Window:destroy()
-    for _, conn in ipairs(self._connections) do
-        conn:Disconnect()
-    end
-    if self._root then self._root:Destroy() end
+    for _, conn in ipairs(self._connections) do conn:Disconnect() end
+    if self._root       then self._root:Destroy() end
     if self._strokeFrame then self._strokeFrame:Destroy() end
+    if self._iconBtn    then self._iconBtn:Destroy() end
 end
 Window.Destroy = Window.destroy
 
