@@ -1,6 +1,6 @@
 --[[
     ╔═══════════════════════════════════════════════╗
-    ║         GenUI Example  —  v1.0.0              ║
+    ║                GenUI Example                  ║
     ║    Full demo of all elements & systems        ║
     ╚═══════════════════════════════════════════════╝
 --]]
@@ -27,7 +27,7 @@ end
 --GenUI.Icons.set("home", "rbxassetid://111111111")
 --GenUI.Icons.set("settings", "rbxassetid://222222222")
 
--- Kalo mau pake icon, sementara menggunakan rbx asset, contoh :
+--Kalo mau pake icon, sementara menggunakan rbx asset, contoh :
 --GenUI.Icons.setMany({
 --    home     = "rbxassetid://111111111",
 --    settings = "rbxassetid://222222222",
