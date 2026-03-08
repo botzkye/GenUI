@@ -1,236 +1,997 @@
---[[
-    GenUI v1.1.0 | Full Single-file Bundle
-    Fixed & Completed version of your provided source
---]]
+-- GenUI v1.0.0 | Single-file bundle
+-- https://github.com/yourusername/GenUI
+-- Usage: local GenUI = loadstring(game:HttpGet("RAW_URL/dist/main.lua"))()
 
 local cloneref = (cloneref or clonereference or function(i) return i end)
 _G.__GenUI_modules = _G.__GenUI_modules or {}
 local _m = _G.__GenUI_modules
 
--- ── 1. Util.Signal ──────────────────────────────
+-- ── Util.Signal ──────────────────────────────
 _m["Util.Signal"] = (function()
-    local Signal = {}
-    Signal.__index = Signal
-    function Signal.new() return setmetatable({_connections = {}}, Signal) end
-    function Signal:Connect(callback)
-        local id = tostring(callback)
-        self._connections[id] = callback
-        return {Disconnect = function() self._connections[id] = nil end}
-    end
-    function Signal:Fire(...) for _, callback in pairs(self._connections) do task.spawn(callback, ...) end end
-    function Signal:FireSync(...) for _, callback in pairs(self._connections) do callback(...) end end
-    function Signal:Once(callback)
-        local conn; conn = self:Connect(function(...) conn.Disconnect(); callback(...) end)
-        return conn
-    end
-    function Signal:DisconnectAll() self._connections = {} end
-    function Signal:Destroy() self:DisconnectAll() end
-    return Signal
-end)()
+local Signal = {}
+Signal.__index = Signal
 
--- ── 2. Util.Flags ──────────────────────────────
-_m["Util.Flags"] = (function()
-    local Flags = {_registry = {}}
-    function Flags.set(flag, element) if flag and flag ~= "" then Flags._registry[flag] = element end end
-    function Flags.get(flag) return Flags._registry[flag] end
-    function Flags.all() return Flags._registry end
-    function Flags.remove(flag) Flags._registry[flag] = nil end
-    function Flags.clear() Flags._registry = {} end
-    return Flags
-end)()
+function Signal.new()
+    return setmetatable({
+        _connections = {}
+    }, Signal)
+end
 
--- ── 3. Util.Tween ──────────────────────────────
-_m["Util.Tween"] = (function()
-    local TS = game:GetService("TweenService")
-    local Tween = {}
-    function Tween.to(inst, props, dur, style, dir)
-        local t = TS:Create(inst, TweenInfo.new(dur or 0.2, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out), props)
-        t:Play(); return t
-    end
-    function Tween.fade(inst, target, dur) return Tween.to(inst, {BackgroundTransparency = target}, dur) end
-    function Tween.open(inst, target, dur) return Tween.to(inst, {Size = target}, dur or 0.25, Enum.EasingStyle.Back) end
-    return Tween
-end)()
-
--- ── 4. Util.Util (CLEANED - NO DUPLICATES) ──────────────────────────────
-_m["Util.Util"] = (function()
-    local Util = {}
-    Util.cloneref = cloneref
-
-    function Util.create(className, properties, parent)
-        local obj = Instance.new(className)
-        for prop, value in pairs(properties or {}) do
-            if prop ~= "Parent" then obj[prop] = value end
-        end
-        obj.Parent = parent
-        return obj
-    end
-
-    function Util.corner(instance, radius)
-        local corner = Instance.new("UICorner", instance)
-        corner.CornerRadius = radius or UDim.new(0, 8)
-        instance.ClipsDescendants = true
-        return corner
-    end
-
-    function Util.stroke(instance, color, thickness, trans)
-        local s = Instance.new("UIStroke", instance)
-        s.Color = color or Color3.fromRGB(255, 255, 255)
-        s.Thickness = thickness or 1
-        s.Transparency = trans or 0
-        s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        s.LineJoinMode = Enum.LineJoinMode.Round -- Fix pojokan mulus
-        return s
-    end
-
-    function Util.padding(instance, top, right, bottom, left)
-        local pad = Instance.new("UIPadding", instance)
-        pad.PaddingTop, pad.PaddingRight = UDim.new(0, top or 0), UDim.new(0, right or 0)
-        pad.PaddingBottom, pad.PaddingLeft = UDim.new(0, bottom or 0), UDim.new(0, left or 0)
-        return pad
-    end
-
-    function Util.listLayout(instance, options)
-        local layout = Instance.new("UIListLayout", instance)
-        layout.FillDirection = options.FillDirection or Enum.FillDirection.Vertical
-        layout.Padding = options.Padding or UDim.new(0, 0)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        return layout
-    end
-
-    function Util.toJSON(t) return game:GetService("HttpService"):JSONEncode(t) end
-    function Util.fromJSON(str) local ok, res = pcall(function() return game:GetService("HttpService"):JSONDecode(str) end) return ok and res or {} end
-    function Util.getService(name) return cloneref(game:GetService(name)) end
-
-    return Util
-end)()
-
--- ── 5. Systems.Theme ──────────────────────────────
-_m["Systems.Theme"] = (function()
-    local Theme = {}
-    Theme.__index = Theme
-    local THEMES = {
-        Dark = {
-            Background = Color3.fromHex("#0d0d0d"),
-            Elevated = Color3.fromHex("#1a1a1a"),
-            Border = Color3.fromHex("#222222"),
-            Accent = Color3.fromHex("#b8ff57"),
-            TextPrimary = Color3.fromHex("#f0f0f0"),
-            TextSecondary = Color3.fromHex("#888888"),
-            SidebarBg = Color3.fromHex("#0f0f0f"),
-        }
-    }
-    function Theme.new(name)
-        local self = setmetatable({_name = name or "Dark", _tokens = THEMES[name] or THEMES.Dark, _tagged = {}}, Theme)
-        return self
-    end
-    function Theme:get(token) return self._tokens[token] or Color3.new(1,0,1) end
-    return Theme
-end)()
-
--- ── 6. Systems.Icons ──────────────────────────────
-_m["Systems.Icons"] = (function()
-    local Icons = {}
-    function Icons.resolve(name)
-        local map = {settings = "rbxasset://textures/ui/Settings.png", info = "rbxasset://textures/ui/Notification/Info.png"}
-        return map[name] or "rbxasset://textures/ui/GuiImagePlaceholder.png"
-    end
-    function Icons.apply(img, name, color)
-        img.Image = Icons.resolve(name)
-        if color then img.ImageColor3 = color end
-    end
-    return Icons
-end)()
-
--- ── 7. Systems.Notification ──────────────────────────────
-_m["Systems.Notification"] = (function()
-    local Util = _m["Util.Util"]; local Tween = _m["Util.Tween"]; local Icons = _m["Systems.Icons"]
-    local Notification = {}
-    Notification.__index = Notification
-    function Notification.new(gui, theme)
-        local self = setmetatable({_theme = theme}, Notification)
-        self._container = Util.create("Frame", {
-            Name = "NotifRoot", AnchorPoint = Vector2.new(1, 1),
-            Position = UDim2.new(1, -20, 1, -20), Size = UDim2.new(0, 260, 0.8, 0),
-            BackgroundTransparency = 1,
-        }, gui)
-        Util.listLayout(self._container, {VerticalAlignment = Enum.VerticalAlignment.Bottom, Padding = UDim.new(0, 8)})
-        return self
-    end
-    function Notification:push(opt)
-        local card = Util.create("CanvasGroup", {
-            Size = UDim2.new(1, 0, 0, 45), BackgroundColor3 = self._theme:get("Elevated"),
-            GroupTransparency = 1,
-        }, self._container)
-        Util.corner(card); Util.stroke(card, self._theme:get("Border"))
-        local t = Util.create("TextLabel", {Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = opt.Content or "", TextColor3 = self._theme:get("TextPrimary"), Font = Enum.Font.Gotham, TextSize = 12}, card)
-        Util.padding(t, 0, 10, 0, 10)
-        Tween.to(card, {GroupTransparency = 0}, 0.3)
-        task.delay(opt.Duration or 3, function()
-            Tween.to(card, {GroupTransparency = 1}, 0.3).Completed:Connect(function() card:Destroy() end)
-        end)
-    end
-    return Notification
-end)()
-
--- ── 8. Systems.Config (COMPLETED) ──────────────────────────────
-_m["Systems.Config"] = (function()
-    local Util = _m["Util.Util"]; local Flags = _m["Util.Flags"]
-    local ConfigEntry = {}
-    ConfigEntry.__index = ConfigEntry
-    function ConfigEntry.new(manager, name)
-        return setmetatable({_manager = manager, _name = name}, ConfigEntry)
-    end
-    function ConfigEntry:save()
-        local data = {}
-        for f, el in pairs(Flags.all()) do data[f] = el:Get() end
-        writefile(self._manager._folder.."/"..self._name..".json", Util.toJSON(data))
-    end
-    function ConfigEntry:load()
-        local path = self._manager._folder.."/"..self._name..".json"
-        if isfile(path) then
-            local data = Util.fromJSON(readfile(path))
-            for f, v in pairs(data) do if Flags.get(f) then Flags.get(f):Set(v) end end
-        end
-    end
-    
-    local ConfigManager = {}
-    function ConfigManager.new(folder) return { _folder = folder or "GenUI_Configs" } end
-    return ConfigManager
-end)()
-
--- ── 9. MAIN GenUI INTERFACE ──────────────────────────────
-local GenUI = {}
-function GenUI.CreateWindow(config)
-    local Util = _m["Util.Util"]
-    local Theme = _m["Systems.Theme"].new()
-    local sg = Util.create("ScreenGui", {Name = "GenUI_Interface", ResetOnSpawn = false}, game:GetService("CoreGui"))
-    
-    local Main = Util.create("Frame", {
-        Name = "Main", Size = UDim2.new(0, 520, 0, 340),
-        Position = UDim2.new(0.5, -260, 0.5, -170),
-        BackgroundColor3 = Theme:get("Background"),
-    }, sg)
-    Util.corner(Main); Util.stroke(Main, Theme:get("Border"), 1.5)
-
-    -- Sidebar (Permintaan: Di Kiri)
-    local Sidebar = Util.create("Frame", {
-        Name = "Sidebar", Size = UDim2.new(0, 150, 1, 0),
-        BackgroundColor3 = Theme:get("SidebarBg"),
-    }, Main)
-    Util.corner(Sidebar)
-    
-    local Notif = _m["Systems.Notification"].new(sg, Theme)
+function Signal:Connect(callback)
+    local id = tostring(callback)
+    self._connections[id] = callback
     return {
-        Notify = function(msg) Notif:push({Content = msg}) end,
+        Disconnect = function()
+            self._connections[id] = nil
+        end
     }
 end
 
--- Test Run
-local window = GenUI.CreateWindow({Title = "GenUI Demo"})
-window.Notify("GenUI v1.1.0 Loaded!")
+function Signal:Fire(...)
+    for _, callback in pairs(self._connections) do
+        task.spawn(callback, ...)
+    end
+end
 
-return GenUI
+function Signal:FireSync(...)
+    for _, callback in pairs(self._connections) do
+        callback(...)
+    end
+end
+
+function Signal:Once(callback)
+    local conn
+    conn = self:Connect(function(...)
+        conn.Disconnect()
+        callback(...)
+    end)
+    return conn
+end
+
+function Signal:DisconnectAll()
+    self._connections = {}
+end
+
+function Signal:Destroy()
+    self:DisconnectAll()
+end
+
+return Signal
+end)()
+
+-- ── Util.Flags ──────────────────────────────
+_m["Util.Flags"] = (function()
+local Flags = {}
+Flags._registry = {}
+
+-- Register an element with a flag key
+function Flags.set(flag, element)
+    if not flag or flag == "" then return end
+    Flags._registry[flag] = element
+end
+
+-- Get element by flag key
+function Flags.get(flag)
+    return Flags._registry[flag]
+end
+
+-- Get all registered flags
+function Flags.all()
+    return Flags._registry
+end
+
+-- Remove a flag
+function Flags.remove(flag)
+    Flags._registry[flag] = nil
+end
+
+-- Clear all flags (on window destroy)
+function Flags.clear()
+    Flags._registry = {}
+end
+
+return Flags
+end)()
+
+-- ── Util.Tween ──────────────────────────────
+_m["Util.Tween"] = (function()
+local TweenService = game:GetService("TweenService")
+
+local Tween = {}
+
+-- Default easing
+local DEFAULT_TIME  = 0.2
+local DEFAULT_STYLE = Enum.EasingStyle.Quart
+local DEFAULT_DIR   = Enum.EasingDirection.Out
+
+-- Core tween function
+function Tween.to(instance, properties, duration, style, direction)
+    duration  = duration  or DEFAULT_TIME
+    style     = style     or DEFAULT_STYLE
+    direction = direction or DEFAULT_DIR
+
+    local info = TweenInfo.new(duration, style, direction)
+    local t = TweenService:Create(instance, info, properties)
+    t:Play()
+    return t
+end
+
+-- Fade an element in or out
+function Tween.fade(instance, targetAlpha, duration)
+    return Tween.to(instance, { BackgroundTransparency = targetAlpha }, duration)
+end
+
+-- Fade a TextLabel/TextButton
+function Tween.fadeText(instance, targetAlpha, duration)
+    return Tween.to(instance, { TextTransparency = targetAlpha }, duration)
+end
+
+-- Slide: move to a new position
+function Tween.slide(instance, targetPos, duration, style)
+    return Tween.to(instance, { Position = targetPos }, duration, style)
+end
+
+-- Scale: resize to a new size
+function Tween.scale(instance, targetSize, duration, style)
+    return Tween.to(instance, { Size = targetSize }, duration, style)
+end
+
+-- Color transition
+function Tween.color(instance, property, targetColor, duration)
+    return Tween.to(instance, { [property] = targetColor }, duration)
+end
+
+-- Spring-like open animation (size from 0 to target)
+function Tween.open(instance, targetSize, duration)
+    return Tween.to(
+        instance,
+        { Size = targetSize },
+        duration or 0.25,
+        Enum.EasingStyle.Back,
+        Enum.EasingDirection.Out
+    )
+end
+
+-- Quick close animation
+function Tween.close(instance, duration)
+    local current = instance.Size
+    return Tween.to(
+        instance,
+        { Size = UDim2.new(current.X.Scale, current.X.Offset, 0, 0) },
+        duration or 0.18,
+        Enum.EasingStyle.Quart,
+        Enum.EasingDirection.In
+    )
+end
+
+-- Highlight flash (briefly change BackgroundColor3, then restore)
+function Tween.highlight(instance, flashColor, duration)
+    local original = instance.BackgroundColor3
+    duration = duration or 0.12
+    Tween.color(instance, "BackgroundColor3", flashColor, duration)
+    task.delay(duration, function()
+        Tween.color(instance, "BackgroundColor3", original, duration)
+    end)
+end
+
+return Tween
+end)()
+
+-- ── Util.Util ──────────────────────────────
+_m["Util.Util"] = (function()
+local Util = {}
+
+-- Safe cloneref (executor environments may provide this)
+Util.cloneref = (cloneref or clonereference or function(i) return i end)
+
+-- Deep copy a table
+function Util.deepCopy(original)
+    local copy = {}
+    for k, v in pairs(original) do
+        if type(v) == "table" then
+            copy[k] = Util.deepCopy(v)
+        else
+            copy[k] = v
+        end
+    end
+    return copy
+end
+
+-- Merge two tables (b overwrites a)
+function Util.merge(a, b)
+    local result = Util.deepCopy(a)
+    for k, v in pairs(b) do
+        result[k] = v
+    end
+    return result
+end
+
+-- Check if table contains a value
+function Util.contains(t, value)
+    for _, v in ipairs(t) do
+        if v == value then return true end
+    end
+    return false
+end
+
+-- Clamp a number between min and max
+function Util.clamp(n, min, max)
+    return math.max(min, math.min(max, n))
+end
+
+-- Round to nearest step
+function Util.roundToStep(n, step)
+    if step <= 0 then return n end
+    return math.round(n / step) * step
+end
+
+-- Map a value from one range to another
+function Util.map(value, inMin, inMax, outMin, outMax)
+    return outMin + (outMax - outMin) * ((value - inMin) / (inMax - inMin))
+end
+
+-- Safely get a service using cloneref
+function Util.getService(name)
+    return Util.cloneref(game:GetService(name))
+end
+
+-- Create a GuiObject with properties applied — parent set last for performance
+function Util.create(className, properties, parent)
+    local obj = Instance.new(className)
+    for prop, value in pairs(properties or {}) do
+        if prop ~= "Parent" then
+            obj[prop] = value
+        end
+    end
+    if parent then obj.Parent = parent end
+    return obj
+end
+
+-- Apply a table of properties to an existing instance
+function Util.apply(instance, properties)
+    for prop, value in pairs(properties) do
+        instance[prop] = value
+    end
+    return instance
+end
+
+-- Add a UICorner to a GuiObject — NO ClipsDescendants (breaks corners!)
+function Util.corner(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = radius or UDim.new(0, 6)
+    corner.Parent = instance
+    return corner
+end
+
+-- Add a UIPadding to a GuiObject
+function Util.padding(instance, top, right, bottom, left)
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop    = UDim.new(0, top    or 0)
+    pad.PaddingRight  = UDim.new(0, right  or 0)
+    pad.PaddingBottom = UDim.new(0, bottom or 0)
+    pad.PaddingLeft   = UDim.new(0, left   or 0)
+    pad.Parent = instance
+    return pad
+end
+
+-- Add a UIListLayout to a GuiObject
+function Util.listLayout(instance, options)
+    options = options or {}
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection       = options.FillDirection       or Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = options.HorizontalAlignment or Enum.HorizontalAlignment.Left
+    layout.VerticalAlignment   = options.VerticalAlignment   or Enum.VerticalAlignment.Top
+    layout.SortOrder           = options.SortOrder           or Enum.SortOrder.LayoutOrder
+    layout.Padding             = options.Padding             or UDim.new(0, 0)
+    layout.Parent = instance
+    return layout
+end
+
+-- Add UIStroke — LineJoinMode.Round agar mengikuti UICorner dengan sempurna
+function Util.stroke(instance, color, thickness, transparency)
+    local s = Instance.new("UIStroke")
+    s.Color           = color        or Color3.fromHex("#2a2a2a")
+    s.Thickness       = thickness    or 1
+    s.Transparency    = transparency or 0
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.LineJoinMode    = Enum.LineJoinMode.Round
+    s.Parent = instance
+    return s
+end
+
+-- Encode a table to JSON string (basic, for configs)
+function Util.toJSON(t, indent, level)
+    indent = indent or 2
+    level  = level  or 0
+    local pad  = string.rep(" ", level * indent)
+    local pad2 = string.rep(" ", (level + 1) * indent)
+    local tp = type(t)
+
+    if tp == "table" then
+        local isArray = #t > 0
+        local parts = {}
+
+        if isArray then
+            for _, v in ipairs(t) do
+                table.insert(parts, pad2 .. Util.toJSON(v, indent, level + 1))
+            end
+            return "[\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "]"
+        else
+            for k, v in pairs(t) do
+                local key = '"' .. tostring(k) .. '"'
+                table.insert(parts, pad2 .. key .. ": " .. Util.toJSON(v, indent, level + 1))
+            end
+            table.sort(parts)
+            return "{\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "}"
+        end
+    elseif tp == "string" then
+        return '"' .. t:gsub('\\','\\\\'):gsub('"','\\"'):gsub('\n','\\n') .. '"'
+    elseif tp == "number" or tp == "boolean" then
+        return tostring(t)
+    elseif tp == "nil" then
+        return "null"
+    else
+        return '"[' .. tp .. ']"'
+    end
+end
+
+-- Decode JSON string to table (basic)
+function Util.fromJSON(str)
+    local HttpService = Util.getService("HttpService")
+    local ok, result = pcall(function()
+        return HttpService:JSONDecode(str)
+    end)
+    return ok and result or {}
+end
+
+return Util
+end)()
+
+-- ── Systems.Theme ──────────────────────────────
+_m["Systems.Theme"] = (function()
+local Theme = {}
+Theme.__index = Theme
+
+-- ── Built-in themes ──────────────────────────────────────────────────────────
+
+local THEMES = {
+
+    Dark = {
+        -- Backgrounds
+        Background      = Color3.fromHex("#0d0d0d"),
+        Surface         = Color3.fromHex("#141414"),
+        SurfaceHover    = Color3.fromHex("#1c1c1c"),
+        SurfaceActive   = Color3.fromHex("#202020"),
+        Elevated        = Color3.fromHex("#1a1a1a"),
+
+        -- Borders
+        Border          = Color3.fromHex("#222222"),
+        BorderFocus     = Color3.fromHex("#3a3a3a"),
+
+        -- Accent
+        Accent          = Color3.fromHex("#b8ff57"),
+        AccentDim       = Color3.fromHex("#2a3a10"),
+        AccentText      = Color3.fromHex("#0d0d0d"),
+
+        -- Text
+        TextPrimary     = Color3.fromHex("#f0f0f0"),
+        TextSecondary   = Color3.fromHex("#888888"),
+        TextMuted       = Color3.fromHex("#444444"),
+        TextDisabled    = Color3.fromHex("#333333"),
+
+        -- Semantic
+        Success         = Color3.fromHex("#10C550"),
+        Warning         = Color3.fromHex("#ffb347"),
+        Danger          = Color3.fromHex("#EF4F1D"),
+        Info            = Color3.fromHex("#57b8ff"),
+
+        -- Scrollbar
+        ScrollBar       = Color3.fromHex("#2a2a2a"),
+        ScrollBarHover  = Color3.fromHex("#3a3a3a"),
+
+        -- Toggle
+        ToggleOn        = Color3.fromHex("#b8ff57"),
+        ToggleOff       = Color3.fromHex("#2a2a2a"),
+        ToggleKnob      = Color3.fromHex("#f0f0f0"),
+
+        -- Topbar — slightly lighter than background
+        TopbarBg        = Color3.fromHex("#111111"),
+        TopbarBorder    = Color3.fromHex("#1e1e1e"),
+
+        -- Sidebar — slightly lighter than background
+        SidebarBg       = Color3.fromHex("#0f0f0f"),
+        SidebarBorder   = Color3.fromHex("#1a1a1a"),
+        TabActive       = Color3.fromHex("#1c1c1c"),
+        TabHover        = Color3.fromHex("#161616"),
+    },
+
+    Midnight = {
+        Background      = Color3.fromHex("#05050f"),
+        Surface         = Color3.fromHex("#0c0c1e"),
+        SurfaceHover    = Color3.fromHex("#12122a"),
+        SurfaceActive   = Color3.fromHex("#16163a"),
+        Elevated        = Color3.fromHex("#10102a"),
+
+        Border          = Color3.fromHex("#1a1a38"),
+        BorderFocus     = Color3.fromHex("#2a2a58"),
+
+        Accent          = Color3.fromHex("#7775F2"),
+        AccentDim       = Color3.fromHex("#12103a"),
+        AccentText      = Color3.fromHex("#ffffff"),
+
+        TextPrimary     = Color3.fromHex("#e8e8ff"),
+        TextSecondary   = Color3.fromHex("#7070aa"),
+        TextMuted       = Color3.fromHex("#383860"),
+        TextDisabled    = Color3.fromHex("#2a2a50"),
+
+        Success         = Color3.fromHex("#10C550"),
+        Warning         = Color3.fromHex("#ffb347"),
+        Danger          = Color3.fromHex("#EF4F1D"),
+        Info            = Color3.fromHex("#57b8ff"),
+
+        ScrollBar       = Color3.fromHex("#1a1a38"),
+        ScrollBarHover  = Color3.fromHex("#2a2a58"),
+
+        ToggleOn        = Color3.fromHex("#7775F2"),
+        ToggleOff       = Color3.fromHex("#1a1a38"),
+        ToggleKnob      = Color3.fromHex("#ffffff"),
+
+        TopbarBg        = Color3.fromHex("#05050f"),
+        TopbarBorder    = Color3.fromHex("#12122a"),
+
+        SidebarBg       = Color3.fromHex("#08081a"),
+        SidebarBorder   = Color3.fromHex("#12122a"),
+        TabActive       = Color3.fromHex("#12122a"),
+        TabHover        = Color3.fromHex("#0e0e22"),
+    },
+
+    Slate = {
+        Background      = Color3.fromHex("#0e1015"),
+        Surface         = Color3.fromHex("#141820"),
+        SurfaceHover    = Color3.fromHex("#1a1e28"),
+        SurfaceActive   = Color3.fromHex("#1e2230"),
+        Elevated        = Color3.fromHex("#181c26"),
+
+        Border          = Color3.fromHex("#20242e"),
+        BorderFocus     = Color3.fromHex("#30384a"),
+
+        Accent          = Color3.fromHex("#57b8ff"),
+        AccentDim       = Color3.fromHex("#0e1a28"),
+        AccentText      = Color3.fromHex("#0e1015"),
+
+        TextPrimary     = Color3.fromHex("#dce4f0"),
+        TextSecondary   = Color3.fromHex("#6878a0"),
+        TextMuted       = Color3.fromHex("#30384a"),
+        TextDisabled    = Color3.fromHex("#252d3e"),
+
+        Success         = Color3.fromHex("#10C550"),
+        Warning         = Color3.fromHex("#ffb347"),
+        Danger          = Color3.fromHex("#EF4F1D"),
+        Info            = Color3.fromHex("#57b8ff"),
+
+        ScrollBar       = Color3.fromHex("#20242e"),
+        ScrollBarHover  = Color3.fromHex("#30384a"),
+
+        ToggleOn        = Color3.fromHex("#57b8ff"),
+        ToggleOff       = Color3.fromHex("#20242e"),
+        ToggleKnob      = Color3.fromHex("#dce4f0"),
+
+        TopbarBg        = Color3.fromHex("#0e1015"),
+        TopbarBorder    = Color3.fromHex("#1a1e28"),
+
+        SidebarBg       = Color3.fromHex("#0c0f14"),
+        SidebarBorder   = Color3.fromHex("#181c26"),
+        TabActive       = Color3.fromHex("#181c26"),
+        TabHover        = Color3.fromHex("#141820"),
+    },
+}
+
+-- ── Theme object ─────────────────────────────────────────────────────────────
+
+function Theme.new(name)
+    local self = setmetatable({}, Theme)
+    self._name   = name or "Dark"
+    self._tokens = THEMES[self._name] or THEMES.Dark
+    self._tagged = {} -- { [instance] = true }
+    return self
+end
+
+-- Register a custom theme
+function Theme.register(name, tokens)
+    assert(type(name) == "string", "Theme name must be a string")
+    assert(type(tokens) == "table", "Theme tokens must be a table")
+    -- Fill missing keys from Dark theme as fallback
+    local merged = {}
+    for k, v in pairs(THEMES.Dark) do
+        merged[k] = tokens[k] or v
+    end
+    THEMES[name] = merged
+end
+
+-- Get a color token value
+function Theme:get(token)
+    return self._tokens[token] or Color3.new(1, 0, 1) -- magenta = missing token
+end
+
+-- Tag a GuiObject so Apply() can re-color it
+-- property: the instance property to set (e.g. "BackgroundColor3")
+-- token:    the theme token key (e.g. "Surface")
+function Theme:tag(instance, property, token)
+    instance:SetAttribute("_themeKey_" .. property, token)
+    table.insert(self._tagged, instance)
+    -- Apply immediately
+    instance[property] = self:get(token)
+end
+
+-- Re-apply all tokens to all tagged instances (called on theme switch)
+function Theme:apply()
+    for _, instance in ipairs(self._tagged) do
+        if instance and instance.Parent then
+            for _, attr in ipairs(instance:GetAttributes()) do
+                if attr:sub(1, 10) == "_themeKey_" then
+                    local property = attr:sub(11)
+                    local token    = instance:GetAttribute(attr)
+                    local ok, err = pcall(function()
+                        instance[property] = self:get(token)
+                    end)
+                    if not ok then
+                        warn("[GenUI:Theme] Failed to apply token '" .. token .. "' to " .. property .. ": " .. tostring(err))
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Switch to a different theme
+function Theme:switch(name)
+    local tokens = THEMES[name]
+    if not tokens then
+        warn("[GenUI:Theme] Unknown theme: " .. tostring(name))
+        return
+    end
+    self._name   = name
+    self._tokens = tokens
+    self:apply()
+end
+
+-- Get current theme name
+function Theme:getName()
+    return self._name
+end
+
+-- Get list of available theme names
+function Theme.list()
+    local names = {}
+    for k in pairs(THEMES) do
+        table.insert(names, k)
+    end
+    table.sort(names)
+    return names
+end
+
+return Theme
+end)()
+
+-- ── Systems.Icons ──────────────────────────────
+_m["Systems.Icons"] = (function()
+local Icons = {}
+
+-- ── Built-in Roblox studio icons (rbxasset) ───────────────────────────────────
+-- Semua ini tersedia tanpa upload di semua Roblox game
+local DEFAULT = {
+    -- Navigation / UI
+    ["home"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["menu"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["settings"]       = "rbxasset://textures/ui/Settings.png",
+    ["search"]         = "rbxasset://textures/ui/SearchIcon.png",
+    ["close"]          = "rbxasset://textures/ui/Close.png",
+    ["back"]           = "rbxasset://textures/ui/TopBar/BackButton.png",
+
+    -- Arrows / chevrons
+    ["chevron-down"]   = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+    ["chevron-up"]     = "rbxasset://textures/ui/Controls/CollapseArrow.png",
+    ["chevron-right"]  = "rbxasset://textures/ui/Controls/ExpandArrow_rtl.png",
+    ["arrow-down"]     = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+
+    -- Actions
+    ["plus"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
+    ["check"]          = "rbxasset://textures/ui/Notification/Success.png",
+    ["x"]              = "rbxasset://textures/ui/Close.png",
+    ["trash"]          = "rbxasset://textures/ui/Close.png",
+    ["edit"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["save"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["copy"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["refresh"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["download"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["lock"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["unlock"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["eye"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["eye-off"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+
+    -- Files / folders
+    ["file"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["file-text"]      = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["folder"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["folder-open"]    = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+
+    -- Alerts / status
+    ["info"]           = "rbxasset://textures/ui/Notification/Info.png",
+    ["check-circle"]   = "rbxasset://textures/ui/Notification/Success.png",
+    ["alert"]          = "rbxasset://textures/ui/Notification/Warning.png",
+    ["bell"]           = "rbxasset://textures/ui/Notification/Info.png",
+    ["bell-off"]       = "rbxasset://textures/ui/Notification/Info.png",
+    ["x-circle"]       = "rbxasset://textures/ui/Notification/Error.png",
+
+    -- Controls
+    ["sliders"]        = "rbxasset://textures/ui/Settings.png",
+    ["toggle-right"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["mouse-pointer"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["keyboard"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["monitor"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["color-swatch"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["sun"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["moon"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["star"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
+
+    -- Window controls
+    ["minimize"]       = "rbxasset://textures/ui/Controls/CollapseArrow.png",
+    ["maximize"]       = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+
+    -- Social
+    ["github"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["discord"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+}
+
+-- Named sets (e.g. "solar:home-bold")
+local SETS = {
+    solar = {
+        ["home-bold"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["info-square-bold"]     = "rbxasset://textures/ui/Notification/Info.png",
+        ["check-square-bold"]    = "rbxasset://textures/ui/Notification/Success.png",
+        ["cursor-square-bold"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["file-text-bold"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["folder-with-files-bold"] = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["hamburger-menu-bold"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ["settings-bold"]        = "rbxasset://textures/ui/Settings.png",
+        ["bell-bold"]            = "rbxasset://textures/ui/Notification/Info.png",
+    },
+}
+
+local FALLBACK = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+
+-- ── API ───────────────────────────────────────────────────────────────────────
+
+function Icons.resolve(name)
+    if not name or name == "" then return FALLBACK end
+
+    -- Direct passthrough
+    if name:sub(1, 13) == "rbxassetid://" then return name end
+    if name:sub(1, 10) == "rbxasset:/" then return name end
+
+    -- Named set: "solar:home-bold"
+    if name:find(":") then
+        local setName, iconName = name:match("^(.-)%:(.+)$")
+        if setName and iconName and SETS[setName] then
+            return SETS[setName][iconName] or FALLBACK
+        end
+        return FALLBACK
+    end
+
+    return DEFAULT[name] or FALLBACK
+end
+
+function Icons.add(setName, iconMap)
+    SETS[setName] = SETS[setName] or {}
+    for k, v in pairs(iconMap) do SETS[setName][k] = v end
+end
+
+function Icons.addDefault(iconMap)
+    for k, v in pairs(iconMap) do DEFAULT[k] = v end
+end
+
+function Icons.exists(name)
+    local r = Icons.resolve(name)
+    return r ~= FALLBACK
+end
+
+function Icons.apply(imageInstance, name, color)
+    if not name or name == "" then
+        imageInstance.Visible = false
+        return
+    end
+    local asset = Icons.resolve(name)
+    imageInstance.Image = asset
+    imageInstance.Visible = true
+    if color then
+        imageInstance.ImageColor3 = color
+    end
+end
+
+return Icons
+end)()
+
+-- ── Systems.Notification ──────────────────────────────
+_m["Systems.Notification"] = (function()
+local Util  = _G.__GenUI_modules["Util.Util"]
+local Tween = _G.__GenUI_modules["Util.Tween"]
+
+local Notification = {}
+Notification.__index = Notification
+
+local function isLowEnd()
+    local ok, touch = pcall(function()
+        return game:GetService("UserInputService").TouchEnabled
+    end)
+    return ok and touch
+end
+
+function Notification.new(screenGui, theme)
+    local self = setmetatable({}, Notification)
+    self._theme = theme
+    self._queue = {}
+    self._active = false
+
+    self._container = Util.create("Frame", {
+        Name             = "NotifContainer",
+        AnchorPoint      = Vector2.new(1, 1),
+        Position         = UDim2.new(1, -16, 1, -16),
+        Size             = UDim2.new(0, 290, 0, 0),
+        AutomaticSize    = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        ZIndex           = 100,
+    }, screenGui)
+
+    local layout = Instance.new("UIListLayout")
+    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    layout.SortOrder         = Enum.SortOrder.LayoutOrder
+    layout.Padding           = UDim.new(0, 8)
+    layout.Parent            = self._container
+
+    return self
+end
+
+function Notification:push(options)
+    table.insert(self._queue, options)
+    if not self._active then
+        self:_process()
+    end
+end
+
+function Notification:_process()
+    if #self._queue == 0 then
+        self._active = false
+        return
+    end
+    self._active = true
+    local opts = table.remove(self._queue, 1)
+
+    local duration = opts.Duration or 3.5
+    local accentColor = opts.Color or self._theme:get("Accent")
+    local cardType = (not isLowEnd()) and "CanvasGroup" or "Frame"
+
+    -- Card
+    local card = Util.create(cardType, {
+        Name             = "NotifCard",
+        Size             = UDim2.new(1, 0, 0, 64),
+        BackgroundColor3 = self._theme:get("Elevated"),
+        BorderSizePixel  = 0,
+        ZIndex           = 101,
+        GroupTransparency = cardType == "CanvasGroup" and 1 or nil,
+        BackgroundTransparency = cardType == "Frame" and 1 or nil,
+    }, self._container)
+    Util.corner(card, UDim.new(0, 10))
+    Util.stroke(card, self._theme:get("Border"), 1)
+    Util.padding(card, 12, 14, 12, 14)
+
+    -- Left accent bar
+    local accent = Util.create("Frame", {
+        Size             = UDim2.new(0, 3, 1, -24),
+        AnchorPoint      = Vector2.new(0, 0.5),
+        Position         = UDim2.new(0, 0, 0.5, 0),
+        BackgroundColor3 = accentColor,
+        BorderSizePixel  = 0,
+        ZIndex           = 102,
+    }, card)
+    Util.corner(accent, UDim.new(1, 0))
+
+    -- Text stack
+    local stack = Util.create("Frame", {
+        Size             = UDim2.new(1, -16, 1, 0),
+        Position         = UDim2.new(0, 14, 0, 0),
+        BackgroundTransparency = 1,
+        ZIndex           = 102,
+    }, card)
+    Util.listLayout(stack, { Padding = UDim.new(0, 3) })
+
+    Util.create("TextLabel", {
+        Size             = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        Text             = opts.Title or "Notifikasi",
+        TextColor3       = accentColor,
+        TextSize         = 13,
+        Font             = Enum.Font.GothamBold,
+        TextXAlignment   = Enum.TextXAlignment.Left,
+        ZIndex           = 103,
+    }, stack)
+
+    if opts.Content then
+        Util.create("TextLabel", {
+            Size             = UDim2.new(1, 0, 0, 14),
+            BackgroundTransparency = 1,
+            Text             = opts.Content,
+            TextColor3       = self._theme:get("TextSecondary"),
+            TextSize         = 11,
+            Font             = Enum.Font.Gotham,
+            TextXAlignment   = Enum.TextXAlignment.Left,
+            TextTruncate     = Enum.TextTruncate.AtEnd,
+            ZIndex           = 103,
+        }, stack)
+    end
+
+    -- Animate in
+    if cardType == "CanvasGroup" then
+        Tween.to(card, { GroupTransparency = 0 }, 0.3, Enum.EasingStyle.Quint)
+    else
+        card.BackgroundTransparency = 0
+    end
+
+    -- Progress bar (bottom of card)
+    local bar = Util.create("Frame", {
+        Size             = UDim2.new(1, 0, 0, 2),
+        AnchorPoint      = Vector2.new(0, 1),
+        Position         = UDim2.new(0, 0, 1, 0),
+        BackgroundColor3 = accentColor,
+        BorderSizePixel  = 0,
+        ZIndex           = 102,
+    }, card)
+    Tween.to(bar, { Size = UDim2.new(0, 0, 0, 2) }, duration, Enum.EasingStyle.Linear)
+
+    -- Auto dismiss
+    task.delay(duration, function()
+        if cardType == "CanvasGroup" then
+            local t = Tween.to(card, { GroupTransparency = 1 }, 0.25)
+            t.Completed:Connect(function() card:Destroy() end)
+        else
+            card:Destroy()
+        end
+        task.delay(0.3, function() self:_process() end)
+    end)
+end
+
+return Notification
+end)()
+
+-- ── Systems.Config ──────────────────────────────
+_m["Systems.Config"] = (function()
+local Util  = _G.__GenUI_modules["Util.Util"]
+local Flags = _G.__GenUI_modules["Util.Flags"]
+
+-- ── ConfigEntry ───────────────────────────────────────────────────────────────
+
+local ConfigEntry = {}
+ConfigEntry.__index = ConfigEntry
+
+function ConfigEntry.new(manager, name)
+    return setmetatable({
+        _manager  = manager,
+        _name     = name,
+        AutoLoad  = false,
+    }, ConfigEntry)
+end
+
+function ConfigEntry:_path()
+    return self._manager._folder .. "/configs/" .. self._name .. ".json"
+end
+
+-- Save current flag states to file
+function ConfigEntry:save()
+    if not writefile then
+        warn("[GenUI:Config] writefile not available")
+        return false
+    end
+
+    local data = {}
+    for flag, element in pairs(Flags.all()) do
+        local ok, value = pcall(function() return element:Get() end)
+        if ok then
+            -- Serialize Color3 specially
+            if typeof(value) == "Color3" then
+                data[flag] = {
+                    _type = "Color3",
+                    r = value.R, g = value.G, b = value.B
+                }
+            else
+                data[flag] = value
+            end
+        end
+    end
+
+    local ok, err = pcall(function()
+        writefile(self:_path(), Util.toJSON(data))
+    end)
+
+    if not ok then
+        warn("[GenUI:Config] Failed to save '" .. self._name .. "': " .. tostring(err))
+        return false
+    end
+
+    return true
+end
+
+-- Load flag states from file and apply to elements
+function ConfigEntry:load()
+    if not readfile or not isfile then
+        warn("[GenUI:Config] readfile/isfile not available")
+        return false
+    end
+
+    if not isfile(self:_path()) then
+        warn("[GenUI:Config] Config '" .. self._name .. "' not found")
+        return false
+    end
+
+    local raw
+    local ok, err = pcall(function()
+        raw = readfile(self:_path())
+    end)
+
+    if not ok then
+        warn("[GenUI:Config] Failed to read '" .. self._name .. "': " .. tostring(err))
+        return false
+    end
+
+    local data = Util.fromJSON(raw)
+
+    for flag, value in pairs(data) do
+        local element = Flags.get(flag)
+        if element then
+            -- Deserialize Color3
+            if type(value) == "table" and value._type == "Color3" then
+                value = Color3.new(value.r, value.g, value.b)
+            end
+
+            local setOk, setErr = pcall(function()
+                element:Set(value)
+            end)
+
+            if not setOk then
+                warn("[GenUI:Config] Failed to apply flag '" .. flag .. "': " .. tostring(setErr))
+            end
+        end
+    end
+
+    return true
+end
+
+-- Delete this config file
+function ConfigEntry:delete()
+    if not delfile or not isfile then return false end
+    if isfile(self:_path()) then
+        pcall(delfile, self:_path())
+    end
+    return true
+end
+
+-- Set auto-load for this config
+function ConfigEntry:setAutoLoad(enabled)
+    self.AutoLoad = enabled
+    -- Persist auto-load preference in a meta file
+    if writefile then
+        local metaPath = self._manager._folder .. "/configs/_autoload.json"
+        local meta = {}
+
+        if isfile and isfile(metaPath) then
+            local ok, raw = pcall(readfile, metaPath)
+            if ok then meta = Util.fromJSON(raw) end
+        end
+
+        meta[self._name] = enabled
+
+        pcall(writefile, metaPath, Util.toJSON(meta))
+    end
+end
+
 -- ── ConfigManager ─────────────────────────────────────────────────────────────
 
 local ConfigManager = {}
@@ -2315,9 +3076,9 @@ function Window:_buildSidebar(options)
     Util.corner(sidebar, UDim.new(0, 10))
     self._theme:tag(sidebar, "BackgroundColor3", "SidebarBg")
 
-    -- Fix top corners (make square)
+    -- Fix top corners (cover only the 10px corner area, not the whole top)
     local topFix = Util.create("Frame", {
-        Size             = UDim2.new(1, 0, 0, 12),
+        Size             = UDim2.new(1, 0, 0, 10),
         Position         = UDim2.new(0, 0, 0, 0),
         BackgroundColor3 = self._theme:get("SidebarBg"),
         BorderSizePixel  = 0,
@@ -2325,10 +3086,10 @@ function Window:_buildSidebar(options)
     }, sidebar)
     self._theme:tag(topFix, "BackgroundColor3", "SidebarBg")
 
-    -- Fix right corners (make square)
+    -- Fix right corners (cover only the 10px corner area on right)
     local rightFix = Util.create("Frame", {
-        Size             = UDim2.new(0, 12, 1, 0),
-        Position         = UDim2.new(1, -12, 0, 0),
+        Size             = UDim2.new(0, 10, 1, 0),
+        Position         = UDim2.new(1, -10, 0, 0),
         BackgroundColor3 = self._theme:get("SidebarBg"),
         BorderSizePixel  = 0,
         ZIndex           = 2,
@@ -2345,12 +3106,13 @@ function Window:_buildSidebar(options)
         ZIndex           = 3,
     }, sidebar)
 
-    -- Search bar
+    -- Search bar — ZIndex 5 agar di atas topFix/rightFix
     local searchFrame
     if not options.HideSearchBar then
         searchFrame = Util.create("Frame", {
             Size             = UDim2.new(1, 0, 0, 40),
             BackgroundTransparency = 1,
+            ZIndex           = 5,
         }, sidebar)
         Util.padding(searchFrame, 8, 8, 4, 8)
 
@@ -2358,6 +3120,7 @@ function Window:_buildSidebar(options)
             Size             = UDim2.new(1, 0, 1, 0),
             BackgroundColor3 = self._theme:get("Surface"),
             BorderSizePixel  = 0,
+            ZIndex           = 5,
         }, searchFrame)
         Util.corner(searchBox, UDim.new(0, 6))
         Util.stroke(searchBox, self._theme:get("Border"), 1)
@@ -2374,9 +3137,9 @@ function Window:_buildSidebar(options)
             Font             = Enum.Font.Gotham,
             TextXAlignment   = Enum.TextXAlignment.Left,
             ClearTextOnFocus = false,
+            ZIndex           = 6,
         }, searchBox)
 
-        -- Filter tabs on search
         searchInput:GetPropertyChangedSignal("Text"):Connect(function()
             self:_filterTabs(searchInput.Text)
         end)
@@ -2384,35 +3147,43 @@ function Window:_buildSidebar(options)
         self._searchInput = searchInput
     end
 
-    -- Tab list (scrollable)
+    -- Tab list
     local scrollFrame = Util.create("ScrollingFrame", {
-        Name             = "TabList",
-        Position         = UDim2.new(0, 0, 0, searchFrame and 40 or 0),
-        Size             = UDim2.new(1, 0, 1, -(searchFrame and 40 or 0)),
+        Name                = "TabList",
+        Position            = UDim2.new(0, 0, 0, searchFrame and 40 or 0),
+        Size                = UDim2.new(1, 0, 1, -(searchFrame and 40 or 0)),
         BackgroundTransparency = 1,
-        ScrollBarThickness = 0,
-        CanvasSize        = UDim2.new(0, 0, 0, 0),
+        ScrollBarThickness  = 0,
+        CanvasSize          = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ZIndex              = 5,
     }, sidebar)
     Util.padding(scrollFrame, 6, 6, 6, 6)
     Util.listLayout(scrollFrame, { Padding = UDim.new(0, 2) })
 
-    self._sidebar    = sidebar
-    self._tabList    = scrollFrame
+    self._sidebar = sidebar
+    self._tabList = scrollFrame
 end
 
 function Window:_buildContent()
+    -- ClipsDescendants = false so UICorner bottom-right is visible
     self._content = Util.create("Frame", {
         Name             = "ContentPanel",
         Position         = UDim2.new(0, SIDEBAR_W, 0, TOPBAR_H),
         Size             = UDim2.new(1, -SIDEBAR_W, 1, -TOPBAR_H),
         BackgroundColor3 = self._theme:get("Background"),
         BorderSizePixel  = 0,
-        ClipsDescendants = true,
+        ClipsDescendants = false,
     }, self._clip)
     self._theme:tag(self._content, "BackgroundColor3", "Background")
-    -- No UICorner on content — ClipsDescendants already clips it rectangular
-    -- The root frame's UICorner handles the visual rounding of bottom-right corner
+
+    -- Inner scroll container that clips tab content
+    self._contentInner = Util.create("Frame", {
+        Name             = "ContentInner",
+        Size             = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+    }, self._content)
 end
 
 -- ── Dragging ──────────────────────────────────────────────────────────────────
@@ -2558,7 +3329,7 @@ end
 -- Create a Tab directly on this window
 function Window:tab(options)
     local Tab = _G.__GenUI_modules["Core.Tab"]
-    local t = Tab.new(self._content, self._theme, options)
+    local t = Tab.new(self._contentInner or self._content, self._theme, options)
     t._frame.Visible = false
 
     self:_makeTabButton(t)
