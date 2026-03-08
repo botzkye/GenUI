@@ -23,6 +23,17 @@ do
     end
 end
 
+-- Override icon spesifik
+--GenUI.Icons.set("home", "rbxassetid://111111111")
+--GenUI.Icons.set("settings", "rbxassetid://222222222")
+
+-- Atau banyak sekaligus
+--GenUI.Icons.setMany({
+--    home     = "rbxassetid://111111111",
+--    settings = "rbxassetid://222222222",
+--    save     = "rbxassetid://333333333",
+--})
+
 -- ── Colors ────────────────────────────────────────────────────────────────────
 local Accent  = Color3.fromHex("#b8ff57")
 local Blue    = Color3.fromHex("#57b8ff")
@@ -37,8 +48,8 @@ local Muted   = Color3.fromHex("#555555")
 -- ═══════════════════════════════════════════════════
 
 local Window = GenUI:CreateWindow({
-    Title   = "GenUI Example",
-    Icon    = "home",
+    Title   = "Generous UI Example",
+    Icon    = "rbxassetid://127242944781300",
     Folder  = "genui_example",
     Theme   = "Dark",
     OpenKey = Enum.KeyCode.RightShift,
@@ -58,7 +69,7 @@ local ElementsSection = Window:Section({ Title = "Elements" })
 do
     local Tab = ElementsSection:Tab({
         Title = "Overview",
-        Icon  = "home",
+        Icon  = "rbxassetid://99498813576234",
     })
 
     Tab:Label({ Title = "GROUP EXAMPLES", TextSize = 10 })
@@ -796,6 +807,44 @@ do
         IsTooltip = true,
         Callback = function(v)
             Window:SetUIScale(v / 100)
+        end,
+    })
+
+    Tab:Space()
+
+    -- Transparency slider — ubah transparansi background window
+    Tab:Slider({
+        Title    = "Window Transparency",
+        Value    = { Min = 0, Max = 90, Default = 0 },
+        Step     = 5,
+        IsTooltip = true,
+        Callback = function(v)
+            -- 0 = opaque, 90 = hampir transparan
+            Window._root.BackgroundTransparency = v / 100
+        end,
+    })
+
+    Tab:Space()
+
+    -- Window size preset
+    Tab:Dropdown({
+        Title    = "Window Size",
+        Values   = { "Small (460×340)", "Default (580×420)", "Large (720×520)", "Wide (860×480)" },
+        Value    = "Default (580×420)",
+        Callback = function(v)
+            local sizes = {
+                ["Small (460×340)"]   = { 460, 340 },
+                ["Default (580×420)"] = { 580, 420 },
+                ["Large (720×520)"]   = { 720, 520 },
+                ["Wide (860×480)"]    = { 860, 480 },
+            }
+            local s = sizes[v]
+            if s then
+                local newSize = UDim2.fromOffset(s[1], s[2])
+                Window._root.Size        = newSize
+                Window._strokeFrame.Size = newSize
+                Window._fullSize         = newSize
+            end
         end,
     })
 
