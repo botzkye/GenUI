@@ -577,131 +577,108 @@ end)()
 _m["Systems.Icons"] = (function()
 local Icons = {}
 
--- ── Built-in Roblox studio icons (rbxasset) ───────────────────────────────────
--- Semua ini tersedia tanpa upload di semua Roblox game
-local DEFAULT = {
-    -- Navigation / UI
-    ["home"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["menu"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["settings"]       = "rbxasset://textures/ui/Settings.png",
-    ["search"]         = "rbxasset://textures/ui/SearchIcon.png",
-    ["close"]          = "rbxasset://textures/ui/Close.png",
-    ["back"]           = "rbxasset://textures/ui/TopBar/BackButton.png",
+local FALLBACK = "rbxassetid://99498813576234"
 
-    -- Arrows / chevrons
-    ["chevron-down"]   = "rbxasset://textures/ui/Controls/ExpandArrow.png",
-    ["chevron-up"]     = "rbxasset://textures/ui/Controls/CollapseArrow.png",
-    ["chevron-right"]  = "rbxasset://textures/ui/Controls/ExpandArrow_rtl.png",
-    ["arrow-down"]     = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+-- Map nama icon → asset ID
+-- Semua default ke FALLBACK, bisa di-override nanti
+local ICONS = {
+    -- Navigation
+    ["home"]           = FALLBACK,
+    ["menu"]           = FALLBACK,
+    ["settings"]       = FALLBACK,
+    ["search"]         = FALLBACK,
+    ["close"]          = FALLBACK,
+    ["back"]           = FALLBACK,
+
+    -- Arrows
+    ["chevron-down"]   = FALLBACK,
+    ["chevron-up"]     = FALLBACK,
+    ["chevron-right"]  = FALLBACK,
+    ["arrow-down"]     = FALLBACK,
 
     -- Actions
-    ["plus"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
-    ["check"]          = "rbxasset://textures/ui/Notification/Success.png",
-    ["x"]              = "rbxasset://textures/ui/Close.png",
-    ["trash"]          = "rbxasset://textures/ui/Close.png",
-    ["edit"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["save"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["copy"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["refresh"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["download"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["lock"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["unlock"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["eye"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["eye-off"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["plus"]           = FALLBACK,
+    ["check"]          = FALLBACK,
+    ["x"]              = FALLBACK,
+    ["trash"]          = FALLBACK,
+    ["edit"]           = FALLBACK,
+    ["save"]           = FALLBACK,
+    ["copy"]           = FALLBACK,
+    ["refresh"]        = FALLBACK,
+    ["download"]       = FALLBACK,
+    ["lock"]           = FALLBACK,
+    ["unlock"]         = FALLBACK,
+    ["eye"]            = FALLBACK,
+    ["eye-off"]        = FALLBACK,
 
-    -- Files / folders
-    ["file"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["file-text"]      = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["folder"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["folder-open"]    = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    -- Files
+    ["file"]           = FALLBACK,
+    ["file-text"]      = FALLBACK,
+    ["folder"]         = FALLBACK,
+    ["folder-open"]    = FALLBACK,
 
-    -- Alerts / status
-    ["info"]           = "rbxasset://textures/ui/Notification/Info.png",
-    ["check-circle"]   = "rbxasset://textures/ui/Notification/Success.png",
-    ["alert"]          = "rbxasset://textures/ui/Notification/Warning.png",
-    ["bell"]           = "rbxasset://textures/ui/Notification/Info.png",
-    ["bell-off"]       = "rbxasset://textures/ui/Notification/Info.png",
-    ["x-circle"]       = "rbxasset://textures/ui/Notification/Error.png",
+    -- Status
+    ["info"]           = FALLBACK,
+    ["check-circle"]   = FALLBACK,
+    ["alert"]          = FALLBACK,
+    ["bell"]           = FALLBACK,
+    ["bell-off"]       = FALLBACK,
+    ["x-circle"]       = FALLBACK,
 
     -- Controls
-    ["sliders"]        = "rbxasset://textures/ui/Settings.png",
-    ["toggle-right"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["mouse-pointer"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["keyboard"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["monitor"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["color-swatch"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["sun"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["moon"]           = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["star"]           = "rbxasset://textures/ui/PurchasePrompt/PlusIcon.png",
+    ["sliders"]        = FALLBACK,
+    ["toggle-right"]   = FALLBACK,
+    ["mouse-pointer"]  = FALLBACK,
+    ["keyboard"]       = FALLBACK,
+    ["monitor"]        = FALLBACK,
+    ["color-swatch"]   = FALLBACK,
+    ["sun"]            = FALLBACK,
+    ["moon"]           = FALLBACK,
+    ["star"]           = FALLBACK,
 
-    -- Window controls
-    ["minimize"]       = "rbxasset://textures/ui/Controls/CollapseArrow.png",
-    ["maximize"]       = "rbxasset://textures/ui/Controls/ExpandArrow.png",
+    -- Window
+    ["minimize"]       = FALLBACK,
+    ["maximize"]       = FALLBACK,
 
     -- Social
-    ["github"]         = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-    ["discord"]        = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+    ["github"]         = FALLBACK,
+    ["discord"]        = FALLBACK,
 }
-
--- Named sets (e.g. "solar:home-bold")
-local SETS = {
-    solar = {
-        ["home-bold"]            = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ["info-square-bold"]     = "rbxasset://textures/ui/Notification/Info.png",
-        ["check-square-bold"]    = "rbxasset://textures/ui/Notification/Success.png",
-        ["cursor-square-bold"]   = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ["file-text-bold"]       = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ["folder-with-files-bold"] = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ["hamburger-menu-bold"]  = "rbxasset://textures/ui/GuiImagePlaceholder.png",
-        ["settings-bold"]        = "rbxasset://textures/ui/Settings.png",
-        ["bell-bold"]            = "rbxasset://textures/ui/Notification/Info.png",
-    },
-}
-
-local FALLBACK = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 
 -- ── API ───────────────────────────────────────────────────────────────────────
 
+-- Resolve nama icon ke asset ID string
 function Icons.resolve(name)
     if not name or name == "" then return FALLBACK end
 
-    -- Direct passthrough
+    -- Sudah berupa asset ID langsung
     if name:sub(1, 13) == "rbxassetid://" then return name end
     if name:sub(1, 10) == "rbxasset:/" then return name end
 
-    -- Named set: "solar:home-bold"
-    if name:find(":") then
-        local setName, iconName = name:match("^(.-)%:(.+)$")
-        if setName and iconName and SETS[setName] then
-            return SETS[setName][iconName] or FALLBACK
-        end
-        return FALLBACK
+    return ICONS[name] or FALLBACK
+end
+
+-- Override satu icon dengan asset ID spesifik
+-- Contoh: Icons.set("home", "rbxassetid://12345678")
+function Icons.set(name, assetId)
+    ICONS[name] = assetId
+end
+
+-- Override banyak icon sekaligus
+-- Contoh: Icons.setMany({ home = "rbxassetid://123", settings = "rbxassetid://456" })
+function Icons.setMany(map)
+    for name, assetId in pairs(map) do
+        ICONS[name] = assetId
     end
-
-    return DEFAULT[name] or FALLBACK
 end
 
-function Icons.add(setName, iconMap)
-    SETS[setName] = SETS[setName] or {}
-    for k, v in pairs(iconMap) do SETS[setName][k] = v end
-end
-
-function Icons.addDefault(iconMap)
-    for k, v in pairs(iconMap) do DEFAULT[k] = v end
-end
-
-function Icons.exists(name)
-    local r = Icons.resolve(name)
-    return r ~= FALLBACK
-end
-
+-- Terapkan icon ke ImageLabel/ImageButton
 function Icons.apply(imageInstance, name, color)
     if not name or name == "" then
         imageInstance.Visible = false
         return
     end
-    local asset = Icons.resolve(name)
-    imageInstance.Image = asset
+    imageInstance.Image   = Icons.resolve(name)
     imageInstance.Visible = true
     if color then
         imageInstance.ImageColor3 = color
