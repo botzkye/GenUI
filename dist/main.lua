@@ -177,12 +177,83 @@ end
 return Tween
 end)()
 
--- ── Util.Util ──────────────────────────────
+-- ── Util.Util (OPTIMIZED & FIX VISUAL) ──────────────────────────────
 _m["Util.Util"] = (function()
-local Util = {}
+    local Util = {}
 
--- Safe cloneref (executor environments may provide this)
-Util.cloneref = (cloneref or clonereference or function(i) return i end)
+    -- Safe cloneref
+    Util.cloneref = (cloneref or clonereference or function(i) return i end)
+
+    -- Fungsi deteksi perangkat (untuk optimasi mobile)
+    function Util.isLowEnd()
+        local UIS = game:GetService("UserInputService")
+        -- Jika layar sentuh aktif (mobile) biasanya butuh optimasi lebih
+        return UIS.TouchEnabled
+    end
+
+    -- Create dengan urutan Parent di akhir (Lebih enteng/cepat)
+    function Util.create(className, properties, parent)
+        local obj = Instance.new(className)
+        for prop, value in pairs(properties or {}) do
+            if prop ~= "Parent" then
+                obj[prop] = value
+            end
+        end
+        obj.Parent = parent
+        return obj
+    end
+
+    -- FIX: Ujung melengkung sempurna
+    function Util.corner(instance, radius)
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = radius or UDim.new(0, 8)
+        corner.Parent = instance
+        
+        -- Memastikan isi konten tidak keluar dari lengkungan
+        instance.ClipsDescendants = true
+        return corner
+    end
+
+    -- FIX: Border/Garis tepi yang mengikuti lengkungan dengan halus
+    function Util.stroke(instance, color, thickness, transparency)
+        local s = Instance.new("UIStroke")
+        s.Color = color or Color3.fromRGB(255, 255, 255)
+        s.Thickness = thickness or 1
+        s.Transparency = transparency or 0
+        s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        
+        -- KUNCI UTAMA: LineJoinMode.Round membuat siku stroke jadi melengkung halus
+        s.LineJoinMode = Enum.LineJoinMode.Round 
+        
+        s.Parent = instance
+        return s
+    end
+
+    -- Fungsi pembantu lainnya tetap dipertahankan
+    function Util.padding(instance, top, right, bottom, left)
+        local pad = Instance.new("UIPadding")
+        pad.PaddingTop = UDim.new(0, top or 0)
+        pad.PaddingRight = UDim.new(0, right or 0)
+        pad.PaddingBottom = UDim.new(0, bottom or 0)
+        pad.PaddingLeft = UDim.new(0, left or 0)
+        pad.Parent = instance
+        return pad
+    end
+
+    function Util.listLayout(instance, options)
+        options = options or {}
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = options.FillDirection or Enum.FillDirection.Vertical
+        layout.HorizontalAlignment = options.HorizontalAlignment or Enum.HorizontalAlignment.Left
+        layout.VerticalAlignment = options.VerticalAlignment or Enum.VerticalAlignment.Top
+        layout.SortOrder = options.SortOrder or Enum.SortOrder.LayoutOrder
+        layout.Padding = options.Padding or UDim.new(0, 0)
+        layout.Parent = instance
+        return layout
+    end
+
+    return Util
+end)()
 
 -- Deep copy a table
 function Util.deepCopy(original)
@@ -235,15 +306,14 @@ function Util.getService(name)
     return Util.cloneref(game:GetService(name))
 end
 
--- Create a GuiObject with properties applied
+-- Create Instance dengan performa lebih baik
 function Util.create(className, properties, parent)
     local obj = Instance.new(className)
+    -- Set parent terakhir untuk optimasi performa rendering
     for prop, value in pairs(properties or {}) do
-        obj[prop] = value
+        if prop ~= "Parent" then obj[prop] = value end
     end
-    if parent then
-        obj.Parent = parent
-    end
+    obj.Parent = parent
     return obj
 end
 
